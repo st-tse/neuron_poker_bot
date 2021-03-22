@@ -287,7 +287,7 @@ class SelfPlay:
         from agents.SAC_agent import Player as SACPlayer
 
         SAC = SACPlayer()
-        SAC.train(env_fn=self.create_env_sac())
+        SAC.train(env_fn=self.create_env_sac)
 
 
 if __name__ == '__main__':
