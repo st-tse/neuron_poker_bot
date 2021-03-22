@@ -4,11 +4,9 @@ Usage:
   main.py selfplay random [options]
   main.py selfplay keypress [options]
   main.py selfplay consider_equity [options]
-  main.py selfplay equity_improvement --improvemest_rounds=<> [options]
+  main.py selfplay equity_improvement --improvement_rounds=<> [options]
   main.py selfplay dqn_train [options]
   main.py selfplay dqn_play [options]
-  main.py selfplay sac_train [options]
-  main.py selfplay sac_play [options]
   main.py learn_table_scraping [options]
 options:
   -h --help                 Show this screen.
@@ -35,7 +33,6 @@ from tools.helper import init_logger
 
 
 # pylint: disable=import-outside-toplevel
-
 
 def command_line_parser():
     """Entry function"""
@@ -79,12 +76,6 @@ def command_line_parser():
 
         elif args['dqn_play']:
             runner.dqn_play_keras_rl(model_name)
-
-        elif args['sac_train']:
-            runner.sac_train(model_name)
-
-        elif args['sac_play']:
-            runner.sac_play(model_name)
 
     else:
         raise RuntimeError("Argument not yet implemented")
@@ -203,18 +194,18 @@ class SelfPlay:
 
         np.random.seed(123)
         env.seed(123)
-
-        env.add_player(EquityPlayer(name='equity/50/70', min_call_equity=.5, min_bet_equity=.7))
-        env.add_player(EquityPlayer(name='equity/20/30', min_call_equity=.2, min_bet_equity=.3))
+        env.add_player(EquityPlayer(name='equity/50/70',
+                       min_call_equity=.5, min_bet_equity=.7))
+        env.add_player(EquityPlayer(name='equity/20/30',
+                       min_call_equity=.2, min_bet_equity=.3))
         env.add_player(RandomPlayer())
         env.add_player(RandomPlayer())
         env.add_player(RandomPlayer())
-        env.add_player(PlayerShell(name='keras-rl', stack_size=self.stack))  # shell is used for callback to keras rl
+        # shell is used for callback to keras rl
+        env.add_player(PlayerShell(name='keras-rl', stack_size=self.stack))
 
         env.reset()
 
-        # don't think this has the capability to actually load a model
-        # might just be overriding. Potentially why results still suck?
         dqn = DQNPlayer()
         dqn.initiate_agent(env)
         dqn.train(env_name=model_name)
@@ -273,27 +264,6 @@ class SelfPlay:
         print("============")
         print(league_table)
         print(f"Best Player: {best_player}")
-
-    def create_env_sac(self):
-        from agents.agent_consider_equity import Player as EquityPlayer
-        env_name = 'neuron_poker-v0'
-
-        env = gym.make(
-            env_name, initial_stacks=self.stack, render=self.render)
-
-        env.add_player(EquityPlayer(name='equity/40/50_1',
-                                    min_call_equity=.4, min_bet_equity=.5))
-        env.add_player(PlayerShell(name='sac', stack_size=self.stack))
-
-        env.reset()
-
-        return env
-
-    def sac_train(self, model_name):
-        from agents.SAC_agent import Player as SACPlayer
-
-        SAC = SACPlayer()
-        SAC.train(env_fn=self.create_env_sac())
 
 
 if __name__ == '__main__':
