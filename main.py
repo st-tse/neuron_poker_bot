@@ -20,6 +20,8 @@ options:
   --stack=<>                starting stack for each player [default: 500].
 """
 
+import multiprocessing
+
 import logging
 
 import gym
@@ -34,6 +36,33 @@ from tools.helper import init_logger
 
 # pylint: disable=import-outside-toplevel
 
+"""
+parallel_dqn_train is an external function that takes in model [dqn], game
+environment [env], and environment label [env_name] and facilitates the training
+loop. I had to take this function out of the class [SelfPlay] because the 
+implied [self] parameter was messing with the pool -.- 
+
+If you want to allocate more threads to the training, adjust parameter 
+[num_par_agents] in the command_line_parser() function to the int that you want
+
+Default number is 5
+
+How much is 5? dunno
+ 
+In theory, you should be able to train things faster
+
+In practice, I have no idea if this makes any meaningful improvements 
+
+But hey it's a feature(TM) and it hasn't broken anything yet so I'm gonna leave 
+it
+"""
+
+
+def parallel_dqn_train(dqn, env, env_name):
+    dqn.initiate_agent(env)
+    dqn.train(env_name=env_name)
+
+
 def command_line_parser():
     """Entry function"""
     args = docopt(__doc__)
@@ -43,6 +72,7 @@ def command_line_parser():
         print("Using default log file")
         logfile = 'default'
     model_name = args['--name'] if args['--name'] else 'dqn1'
+    num_par_agents = 5
     screenloglevel = logging.INFO if not args['--screenloglevel'] else \
         getattr(logging, args['--screenloglevel'].upper())
     _ = get_config()
@@ -72,7 +102,7 @@ def command_line_parser():
             runner.equity_self_improvement(improvement_rounds)
 
         elif args['dqn_train']:
-            runner.dqn_train_keras_rl(model_name)
+            runner.dqn_train_keras_rl(num_par_agents, model_name)
 
         elif args['dqn_play']:
             runner.dqn_play_keras_rl(model_name)
@@ -183,7 +213,7 @@ class SelfPlay:
                 betting[i] = np.mean([betting[i], betting[best_player]])
                 self.log.info(f"New betting for player {i} is {betting[i]}")
 
-    def dqn_train_keras_rl(self, model_name):
+    def dqn_train_keras_rl(self, num_par_agents, model_name):
         """Implementation of kreras-rl deep q learing."""
         from agents.agent_consider_equity import Player as EquityPlayer
         from agents.agent_keras_rl_dqn import Player as DQNPlayer
@@ -195,9 +225,9 @@ class SelfPlay:
         np.random.seed(123)
         env.seed(123)
         env.add_player(EquityPlayer(name='equity/50/70',
-                       min_call_equity=.5, min_bet_equity=.7))
+                                    min_call_equity=.5, min_bet_equity=.7))
         env.add_player(EquityPlayer(name='equity/20/30',
-                       min_call_equity=.2, min_bet_equity=.3))
+                                    min_call_equity=.2, min_bet_equity=.3))
         env.add_player(RandomPlayer())
         env.add_player(RandomPlayer())
         env.add_player(RandomPlayer())
@@ -206,9 +236,12 @@ class SelfPlay:
 
         env.reset()
 
+        env_names = np.full((1, num_par_agents), model_name)
+
         dqn = DQNPlayer()
-        dqn.initiate_agent(env)
-        dqn.train(env_name=model_name)
+
+        with multiprocessing.Pool(num_par_agents) as pool:
+            pool.apply_async(parallel_dqn_train(dqn, env, env_name))
 
     def dqn_play_keras_rl(self, model_name):
         """Create 6 players, one of them a trained DQN"""
