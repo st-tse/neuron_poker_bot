@@ -268,6 +268,8 @@ class SelfPlay:
         print(league_table)
         print(f"Best Player: {best_player}")
 
+    # Deprecated
+    '''
     def create_env_sac(self):
         from agents.agent_consider_equity import Player as EquityPlayer
         env_name = 'neuron_poker-v0'
@@ -283,11 +285,36 @@ class SelfPlay:
 
         return env
 
+    
     def sac_train(self, model_name):
         from agents.SAC_agent import Player as SACPlayer
 
         SAC = SACPlayer()
         SAC.train(env_fn=self.create_env_sac)
+    '''
+
+    def sac_train(self, model_name):
+        """Implementation of SAC."""
+        from agents.SAC_agent import Player as SACPlayer
+        from agents.agent_consider_equity import Player as EquityPlayer
+
+        env_name = 'neuron_poker-v0'
+        env = gym.make(env_name, initial_stacks=self.stack, funds_plot=self.funds_plot, render=self.render,
+                       use_cpp_montecarlo=self.use_cpp_montecarlo)
+
+        np.random.seed(123)
+        env.seed(123)
+        env.add_player(EquityPlayer(name='equity/40/50_1',
+                       min_call_equity=.4, min_bet_equity=.5))
+        env.add_player(PlayerShell(name='sac', stack_size=self.stack))
+
+        env.reset()
+
+        # don't think this has the capability to actually load a model
+        # might just be overriding. Potentially why results still suck?
+        sac = SACPlayer()
+        sac.initiate_agent(env)
+        sac.train(env_name=model_name)
 
 
 if __name__ == '__main__':
