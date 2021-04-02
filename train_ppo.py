@@ -17,6 +17,8 @@ if __name__ == '__main__':
 
     env = gym.make('neuron_poker-v0', initial_stacks=500)
     env.add_player(EquityPlayer(name='equity/20/30', min_call_equity=.2, min_bet_equity=-.3))
+    env.add_player(PlayerShell(name='ppo_agent', stack_size=500))
+    env.reset()
 
     environment = Environment.create(environment=env)
     agent = Agent.create(agent='ppo', environment=environment, batch_size=args.batch_size, learning_rate=args.lr)
