@@ -15,16 +15,16 @@ args = parser.parse_args()
 
 if __name__ == '__main__':
 
-    env = gym.make('neuron_poker-v0', initial_stacks=500)
-    env.add_player(EquityPlayer(name='equity/20/30', min_call_equity=.2, min_bet_equity=-.3))
-    env.add_player(PlayerShell(name='ppo_agent', stack_size=500))
-    env.reset()
+    poker_env = gym.make('neuron_poker-v0', initial_stacks=500)
+    poker_env.add_player(EquityPlayer(name='equity/20/30', min_call_equity=.2, min_bet_equity=-.3))
+    poker_env.add_player(PlayerShell(name='ppo_agent', stack_size=500))
+    poker_env.reset()
 
-    environment = Environment.create(environment=env)
-    agent = Agent.create(agent='ppo', environment=environment, batch_size=args.batch_size, learning_rate=args.lr)
+    env = Environment.create(environment=poker_env, max_episode_timesteps=10)
+    # agent = Agent.create(agent='ppo', environment=env, batch_size=args.batch_size,
+    #                      learning_rate=args.lr, max_episode_timesteps=500)
 
-    runner = Runner(agent=agent, environment=environment, max_episode_timesteps=500,
-                    num_parallel=5, remote='multiprocessing')
+    runner = Runner(agent='ppo.json', environment=dict(type=env), num_parallel=5, remote='multiprocessing')
     print('Training...')
     runner.run(num_episodes=args.episodes)
     print('Evaluating...')
