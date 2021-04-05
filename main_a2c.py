@@ -32,7 +32,8 @@ from docopt import docopt
 from gym_env.env import PlayerShell
 from tools.helper import get_config
 from tools.helper import init_logger
-import tensorforce
+from tensorforce import Environment
+# from gym.spaces.space import Space
 
 
 # pylint: disable=import-outside-toplevel
@@ -59,9 +60,9 @@ it
 """
 
 
-def parallel_dqn_train(dqn, env, env_name):
-    dqn.initiate_agent(env)
-    dqn.train(env_name=env_name)
+def parallel_dqn_train(a2c):
+    a2c.initiate_agent()
+    a2c.train()
 
 
 def command_line_parser():
@@ -218,32 +219,32 @@ class SelfPlay:
         """Implementation of kreras-rl deep q learing."""
         from agents.agent_consider_equity import Player as EquityPlayer
         from agents.agent_keras_rl_dqn import Player as DQNPlayer
+        from agents.a2c_agent import Player as A2CPlayer
         from agents.agent_random import Player as RandomPlayer
         env_name = 'neuron_poker-v0'
-        env = gym.make(env_name, initial_stacks=self.stack, funds_plot=self.funds_plot, render=self.render,
-                       use_cpp_montecarlo=self.use_cpp_montecarlo)
+        # env_name = 'CartPole-v1'
+        env = gym.make(env_name)
+        # print(env.action_space)
 
-        np.random.seed(123)
-        env.seed(123)
+        # np.random.seed(123)
+        # env.seed(123)
         env.add_player(EquityPlayer(name='equity/50/70',
                                     min_call_equity=.5, min_bet_equity=.7))
-        env.add_player(EquityPlayer(name='equity/20/30',
-                                    min_call_equity=.2, min_bet_equity=.3))
-        env.add_player(RandomPlayer())
-        env.add_player(RandomPlayer())
-        env.add_player(RandomPlayer())
         # shell is used for callback to keras rl
         # env.add_player(PlayerShell(name='keras-rl', stack_size=self.stack))
-        env.add_player(PlayerShell(name='a2c', stack_size=self.stack))
+        env.add_player(PlayerShell(name='a2c', stack_size=500))
 
         env.reset()
+        # env.observation_space = gym.spaces.Tuple(
+        #     (gym.spaces.Discrete(2), gym.spaces.Discrete(0)))
 
         env_names = np.full((1, num_par_agents), model_name)
-
-        dqn = DQNPlayer()
+        # print(type(env.action_space))
+        # print(env.observation_space)
+        a2c = A2CPlayer(env=env)
 
         with multiprocessing.Pool(num_par_agents) as pool:
-            pool.apply_async(parallel_dqn_train(dqn, env, env_name))
+            pool.apply_async(parallel_dqn_train(a2c))
 
     def dqn_play_keras_rl(self, model_name):
         """Create 6 players, one of them a trained DQN"""
