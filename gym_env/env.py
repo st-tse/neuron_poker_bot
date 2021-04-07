@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from gym import Env
-from gym.spaces import Discrete
+from gym.spaces import Discrete, Box
 
 from gym_env.rendering import PygletWindow, WHITE, RED, GREEN, BLUE
 from tools.hand_evaluator import get_winner
@@ -287,7 +287,7 @@ class HoldemTable(Env):
                      'stage_data': [stage.__dict__ for stage in self.stage_data],
                      'legal_moves': self.legal_moves}
 
-        self.observation_space = self.array_everything.shape
+        self.observation_space = Box(low=0.0, high=1000.0, shape=self.array_everything.shape, dtype=np.float64)
 
         if self.render_switch:
             self.render()
