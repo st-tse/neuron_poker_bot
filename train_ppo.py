@@ -1,12 +1,11 @@
-from tensorforce.environments import Environment
-from tensorforce.agents import Agent
-from tensorforce.execution import Runner
 import gym
 from agents.agent_consider_equity import Player as EquityPlayer
 from gym_env.env import PlayerShell
+from agents.agent_ppo import Player as PPOPlayer
 import argparse
 
 parser = argparse.ArgumentParser(description="Train a PPO agent for Poker")
+parser.add_argument('--model_name', type=str, help='file to save the model in')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G', help='discount factor (default: 0.99)')
 parser.add_argument('--episodes', type=int, default=500, help='# of episodes to train agent')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size')
@@ -20,14 +19,5 @@ if __name__ == '__main__':
     poker_env.add_player(PlayerShell(name='ppo_agent', stack_size=500))
     poker_env.reset()
 
-    env = Environment.create(environment=poker_env, max_episode_timesteps=10)
-    # agent = Agent.create(agent='ppo', environment=env, batch_size=args.batch_size,
-    #                      learning_rate=args.lr, max_episode_timesteps=500)
-
-    runner = Runner(agent='ppo.json', environment=dict(type=env), num_parallel=5, remote='multiprocessing')
-    print('Training...')
-    runner.run(num_episodes=args.episodes)
-    print('Evaluating...')
-    runner.run(num_episodes=5, evaluation=True)
-
-    runner.close()
+    ppo_agent = PPOPlayer(env=poker_env)
+    ppo_agent.train(args.model_name)
