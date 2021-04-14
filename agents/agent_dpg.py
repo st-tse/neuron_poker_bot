@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 class Player:
     """Mandatory class with the player methods"""
 
-    def __init__(self, name='ppo_agent', load_model=None, env=None):
+    def __init__(self, name='dpg_agent', load_model=None, env=None):
         """Initialization of an agent"""
         self.equity_alive = 0
         self.actions = []
@@ -19,7 +19,7 @@ class Player:
         self.name = name
         self.autoplay = True
 
-        self.ppo_agent = None
+        self.dpg_agent = None
         self.poker_env = Environment.create(environment=env, max_episode_timesteps=100)
         self.runner = None
 
@@ -27,7 +27,7 @@ class Player:
             self.load(load_model)
 
     def load(self, model_name):
-        self.ppo_agent = Agent.load(directory=model_name, format='hdf5')
+        self.spg_agent = Agent.load(directory=model_name, format='hdf5')
 
     def start_step_policy(self, observation):
         log.info("Random action")
@@ -36,11 +36,11 @@ class Player:
         return action
 
     def train(self, model_name, num_ep=500):
-        self.runner = Runner(agent='ppo.json', environment=dict(type=self.poker_env),
+        self.runner = Runner(agent='dpg.json', environment=dict(type=self.poker_env),
                              num_parallel=5, remote='multiprocessing')
         print('Training...')
         self.runner.run(num_episodes=num_ep)
-        self.ppo_agent.save(directory=model_name, format='hdf5', append='episodes')
+        self.dpg_agent.save(directory=model_name, format='hdf5', append='episodes')
         self.runner.close()
 
     def play(self, num_ep=5):
