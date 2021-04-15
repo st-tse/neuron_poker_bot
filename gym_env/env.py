@@ -155,7 +155,7 @@ class HoldemTable(Env):
         self.funds_history = None
         self.array_everything = None
         self.legal_moves = None
-        self.illegal_move_reward = -1
+        self.illegal_move_reward = -10000
         self.action_space = Discrete(len(Action) - 2)
         self.first_action_for_hand = None
 
@@ -203,6 +203,7 @@ class HoldemTable(Env):
                 # call agent's action method
                 action = self.current_player.agent_obj.action(self.legal_moves, self.observation, self.info)
                 if Action(action) not in self.legal_moves:
+                    log.warning('EQUITY ILLEGAL MOVE')
                     self._illegal_move(action)
                 else:
                     self._execute_step(Action(action))
@@ -213,6 +214,7 @@ class HoldemTable(Env):
         else:  # action received from player shell (e.g. keras rl, not autoplay)
             self._get_environment()  # get legal moves
             if Action(action) not in self.legal_moves:
+                log.warning('AGENT ILLEGAL MOVE')
                 self._illegal_move(action)
             else:
                 self._execute_step(Action(action))

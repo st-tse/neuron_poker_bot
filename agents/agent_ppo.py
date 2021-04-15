@@ -4,6 +4,8 @@ from tensorforce.execution import Runner
 from gym_env.env import Action
 import tensorflow as tf
 import logging
+import time
+from tensorflow.keras.callbacks import TensorBoard
 
 log = logging.getLogger(__name__)
 
@@ -36,11 +38,14 @@ class Player:
         return action
 
     def train(self, model_name, num_ep=500):
-        self.runner = Runner(agent='ppo.json', environment=dict(type=self.poker_env),
-                             num_parallel=5, remote='multiprocessing')
+
+        timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str('poker')
+        tensorboard = TensorBoard(log_dir='./Graph/{}'.format(timestr), histogram_freq=0, write_graph=True,
+                                  write_images=False)
+
+        self.runner = Runner(agent='ppo.json', environment=dict(type=self.poker_env))
         print('Training...')
-        self.runner.run(num_episodes=num_ep)
-        self.ppo_agent.save(directory=model_name, format='hdf5', append='episodes')
+        self.runner.run(num_episodes=num_ep, save_best_agent=model_name)
         self.runner.close()
 
     def play(self, num_ep=5):
@@ -55,9 +60,8 @@ class Player:
 
         this_player_action_space = {Action.FOLD, Action.CHECK, Action.CALL, Action.RAISE_POT, Action.RAISE_HALF_POT,
                                     Action.RAISE_2POT}
-        _ = this_player_action_space.intersection(set(action_space))
+        action = this_player_action_space.intersection(set(action_space))
 
-        action = None
         return action
 
 
