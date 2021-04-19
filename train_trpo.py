@@ -1,10 +1,10 @@
 import gym
 from agents.agent_consider_equity import Player as EquityPlayer
 from gym_env.env import PlayerShell
-from agents.agent_dpg import Player as DPGPlayer
+from agents.agent_trpo import Player as TRPOPlayer
 import argparse
 
-parser = argparse.ArgumentParser(description="Train a DPG agent for Poker")
+parser = argparse.ArgumentParser(description="Train a TRPO agent for Poker")
 parser.add_argument('--model_name', type=str, help='file to save the model in')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G', help='discount factor (default: 0.99)')
 parser.add_argument('--episodes', type=int, default=500, help='# of episodes to train agent')
@@ -16,10 +16,10 @@ if __name__ == '__main__':
 
     poker_env = gym.make('neuron_poker-v0', initial_stacks=500)
     poker_env.add_player(EquityPlayer(name='equity/20/30', min_call_equity=.2, min_bet_equity=-.3))
-    poker_env.add_player(PlayerShell(name='dpg_agent', stack_size=500))
+    poker_env.add_player(PlayerShell(name='trpo_agent', stack_size=500))
     poker_env.reset()
 
     # print(poker_env.actions())
 
-    dpg_agent = DPGPlayer(env=poker_env)
-    dpg_agent.train(args.model_name)
+    trpo_agent = TRPOPlayer(env=poker_env)
+    trpo_agent.train(args.model_name)
