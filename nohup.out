@@ -1,0 +1,18 @@
+Usage:
+  main.py selfplay random [options]
+  main.py selfplay keypress [options]
+  main.py selfplay consider_equity [options]
+  main.py selfplay equity_improvement --improvement_rounds=<> [options]
+  main.py selfplay dqn_train [options]
+  main.py selfplay dqn_play [options]
+  main.py learn_table_scraping [options]
+options:
+  -h --help                 Show this screen.
+  -r --render               render screen
+  -c --use_cpp_montecarlo   use cpp implementation of equity calculator. Requires cpp compiler but is 500x faster
+  -f --funds_plot           Plot funds at end of episode
+  --log                     log file
+  --name=<>                 Name of the saved model
+  --screenloglevel=<>       log level on screen
+  --episodes=<>             number of episodes to play
+  --stack=<>                starting stack for each player [default: 500].
