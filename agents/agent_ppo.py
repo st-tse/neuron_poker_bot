@@ -29,6 +29,7 @@ class Player:
             self.load(load_model)
 
     def load(self, model_name):
+        print("Loading model...")
         self.ppo_agent = Agent.load(directory=model_name, format='hdf5')
 
     def start_step_policy(self, observation):
@@ -42,7 +43,7 @@ class Player:
         # timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str('poker')
         # tensorboard = TensorBoard(log_dir='./Graph/{}'.format(timestr), histogram_freq=0, write_graph=True,
         #                           write_images=False)
-        log.debug('Training...')
+        print('Training...')
         self.runner = Runner(agent='ppo.json', environment=dict(type=self.poker_env), 
                 num_parallel=5, remote='multiprocessing')
         self.runner.run(num_episodes=num_ep)
@@ -50,7 +51,7 @@ class Player:
         self.runner.close()
 
     def play(self, num_ep=5):
-        log.debug('Evaluating...')
+        print('Evaluating...')
         self.runner = Runner(agent=self.ppo_agent, environment=dict(type=self.poker_env))
         self.runner.run(num_episodes=num_ep, evaluation=True)
         self.runner.close()
