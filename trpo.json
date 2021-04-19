@@ -1,0 +1,7 @@
+{
+  "agent": "trpo",
+  "network": {"type": "auto", "rnn": false},
+  "use_beta_distribution": false,
+  "memory": "minimum",
+  "batch_size": 12
+}

@@ -19,5 +19,7 @@ if __name__ == '__main__':
     poker_env.add_player(PlayerShell(name='dpg_agent', stack_size=500))
     poker_env.reset()
 
+    # print(poker_env.actions())
+
     dpg_agent = DPGPlayer(env=poker_env)
     dpg_agent.train(args.model_name)

@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 class Player:
     """Mandatory class with the player methods"""
 
-    def __init__(self, name='dpg_agent', load_model=None, env=None):
+    def __init__(self, name='trpo_agent', load_model=None, env=None):
         """Initialization of an agent"""
         self.equity_alive = 0
         self.actions = []
@@ -19,7 +19,7 @@ class Player:
         self.name = name
         self.autoplay = True
 
-        self.dpg_agent = None
+        self.trpo_agent = None
         self.poker_env = Environment.create(environment=env, max_episode_timesteps=100)
         self.runner = None
 
@@ -36,16 +36,19 @@ class Player:
         return action
 
     def train(self, model_name, num_ep=500):
-        self.runner = Runner(agent='dpg.json', environment=dict(type=self.poker_env),
-                             num_parallel=5, remote='multiprocessing')
-        print('Training...')
+        # timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str('poker')
+        # tensorboard = TensorBoard(log_dir='./Graph/{}'.format(timestr), histogram_freq=0, write_graph=True,
+        #                           write_images=False)
+        log.debug('Training...')
+        self.runner = Runner(agent='trpo.json', environment=dict(type=self.poker_env), 
+                num_parallel=5, remote='multiprocessing')
         self.runner.run(num_episodes=num_ep)
-        self.dpg_agent.save(directory=model_name, format='hdf5', append='episodes')
+        self.runner.agent.save(directory=model_name, format='hdf5')
         self.runner.close()
 
     def play(self, num_ep=5):
-        self.runner = Runner(agent=self.ppo_agent, environment=dict(type=self.poker_env))
-        print('Evaluating...')
+        log.debug('Evaluating...')
+        self.runner = Runner(agent=self.trpo_agent, environment=dict(type=self.poker_env))
         self.runner.run(num_episodes=num_ep, evaluation=True)
         self.runner.close()
 
