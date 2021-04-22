@@ -316,8 +316,8 @@ class HoldemTable(Env):
             print(f"Keras-rl agent has reward {self.reward}")
 
         elif len(self.funds_history) > 1:
-            self.reward = -(self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
-                -2, self.acting_agent])
+            self.reward = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
+                -2, self.acting_agent]
 
         else:
             pass

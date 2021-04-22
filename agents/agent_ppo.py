@@ -40,9 +40,6 @@ class Player:
 
     def train(self, model_name, num_ep=500):
 
-        # timestr = time.strftime("%Y%m%d-%H%M%S") + "_" + str('poker')
-        # tensorboard = TensorBoard(log_dir='./Graph/{}'.format(timestr), histogram_freq=0, write_graph=True,
-        #                           write_images=False)
         print('Training...')
         self.runner = Runner(agent='ppo.json', environment=dict(type=self.poker_env), 
                 num_parallel=5, remote='multiprocessing')
@@ -50,7 +47,9 @@ class Player:
         self.runner.agent.save(directory=model_name, format='hdf5')
         self.runner.close()
 
-    def play(self, num_ep=5):
+    def play(self, model_name, num_ep=5):
+        self.load(model_name)
+        
         print('Evaluating...')
         self.runner = Runner(agent=self.ppo_agent, environment=dict(type=self.poker_env))
         self.runner.run(num_episodes=num_ep, evaluation=True)
