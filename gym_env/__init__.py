@@ -6,3 +6,6 @@ register(id='neuron_poker-v0',
 
 register(id='neuron_poker-v1',
          entry_point='gym_env.env_v1:HoldemTable')
+
+register(id='neuron_poker-v3',
+         entry_point='gym_env.env_v3:HoldemTable')
