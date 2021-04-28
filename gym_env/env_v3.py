@@ -1,3 +1,5 @@
+
+#V3 = has exponentially transformed intermediate reward, net final reward, higher penalty 
 """Groupier functions"""
 import logging
 from enum import Enum
