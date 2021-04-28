@@ -13,7 +13,7 @@ args = parser.parse_args()
 if __name__ == '__main__':
 
     poker_env = gym.make('neuron_poker-v0', initial_stacks=500, render=False, funds_plot=False)
-    poker_env.add_player(EquityPlayer(name='equity/80/90', min_call_equity=.8, min_bet_equity=-.9))
+    poker_env.add_player(EquityPlayer(name='equity/60/80', min_call_equity=.6, min_bet_equity=.8))
     poker_env.add_player(PlayerShell(name='ppo_agent', stack_size=500))
     poker_env.reset()
 
