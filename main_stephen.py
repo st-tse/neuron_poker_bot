@@ -1,13 +1,17 @@
 """
 neuron poker
+
 Usage:
   main.py selfplay random [options]
   main.py selfplay keypress [options]
   main.py selfplay consider_equity [options]
-  main.py selfplay equity_improvement --improvement_rounds=<> [options]
+  main.py selfplay equity_improvement --improvemest_rounds=<> [options]
   main.py selfplay dqn_train [options]
   main.py selfplay dqn_play [options]
+  main.py selfplay sac_train [options]
+  main.py selfplay sac_play [options]
   main.py learn_table_scraping [options]
+
 options:
   -h --help                 Show this screen.
   -r --render               render screen
@@ -18,9 +22,8 @@ options:
   --screenloglevel=<>       log level on screen
   --episodes=<>             number of episodes to play
   --stack=<>                starting stack for each player [default: 500].
-"""
 
-import multiprocessing
+"""
 
 import logging
 
@@ -33,34 +36,11 @@ from gym_env.env import PlayerShell
 from tools.helper import get_config
 from tools.helper import init_logger
 
+import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 # pylint: disable=import-outside-toplevel
-
-"""
-parallel_dqn_train is an external function that takes in model [dqn], game
-environment [env], and environment label [env_name] and facilitates the training
-loop. I had to take this function out of the class [SelfPlay] because the 
-implied [self] parameter was messing with the pool -.- 
-
-If you want to allocate more threads to the training, adjust parameter 
-[num_par_agents] in the command_line_parser() function to the int that you want
-
-Default number is 5
-
-How much is 5? dunno
- 
-In theory, you should be able to train things faster
-
-In practice, I have no idea if this makes any meaningful improvements 
-
-But hey it's a feature(TM) and it hasn't broken anything yet so I'm gonna leave 
-it
-"""
-
-
-def parallel_dqn_train(dqn, env, env_name):
-    dqn.initiate_agent(env)
-    dqn.train(env_name=env_name)
 
 
 def command_line_parser():
@@ -72,7 +52,6 @@ def command_line_parser():
         print("Using default log file")
         logfile = 'default'
     model_name = args['--name'] if args['--name'] else 'dqn1'
-    num_par_agents = 5
     screenloglevel = logging.INFO if not args['--screenloglevel'] else \
         getattr(logging, args['--screenloglevel'].upper())
     _ = get_config()
@@ -102,10 +81,16 @@ def command_line_parser():
             runner.equity_self_improvement(improvement_rounds)
 
         elif args['dqn_train']:
-            runner.dqn_train_keras_rl(num_par_agents, model_name)
+            runner.dqn_train_keras_rl(model_name)
 
         elif args['dqn_play']:
             runner.dqn_play_keras_rl(model_name)
+
+        elif args['sac_train']:
+            runner.sac_train(model_name)
+
+        elif args['sac_play']:
+            runner.sac_play(model_name)
 
     else:
         raise RuntimeError("Argument not yet implemented")
@@ -213,10 +198,10 @@ class SelfPlay:
                 betting[i] = np.mean([betting[i], betting[best_player]])
                 self.log.info(f"New betting for player {i} is {betting[i]}")
 
-    def dqn_train_keras_rl(self, num_par_agents, model_name):
+    def dqn_train_keras_rl(self, model_name):
         """Implementation of kreras-rl deep q learing."""
         from agents.agent_consider_equity import Player as EquityPlayer
-        from agents.agent_keras_rl_dqn import Player as DQNPlayer
+        from agents.dqn_agent import Player as DQNPlayer
         from agents.agent_random import Player as RandomPlayer
         env_name = 'neuron_poker-v0'
         env = gym.make(env_name, initial_stacks=self.stack, funds_plot=self.funds_plot, render=self.render,
@@ -224,29 +209,32 @@ class SelfPlay:
 
         np.random.seed(123)
         env.seed(123)
-        env.add_player(EquityPlayer(name='equity/50/70',
-                                    min_call_equity=.5, min_bet_equity=.7))
-        env.add_player(EquityPlayer(name='equity/20/30',
-                                    min_call_equity=.2, min_bet_equity=.3))
-        env.add_player(RandomPlayer())
-        env.add_player(RandomPlayer())
-        env.add_player(RandomPlayer())
-        # shell is used for callback to keras rl
+        env.add_player(EquityPlayer(name='equity/40/50_1',
+                       min_call_equity=.4, min_bet_equity=.5))
+        env.add_player(EquityPlayer(name='equity/40/50_2',
+                       min_call_equity=.4, min_bet_equity=.5))
+        env.add_player(EquityPlayer(name='equity/40/50_3',
+                       min_call_equity=.4, min_bet_equity=.5))
+        env.add_player(EquityPlayer(name='equity/40/50_4',
+                       min_call_equity=.4, min_bet_equity=.5))
+        env.add_player(EquityPlayer(name='equity/40/50_5',
+                       min_call_equity=.4, min_bet_equity=.5))
+        env.add_player(EquityPlayer(name='equity/40/50_6',
+                       min_call_equity=.4, min_bet_equity=.5))
         env.add_player(PlayerShell(name='keras-rl', stack_size=self.stack))
 
         env.reset()
 
-        env_names = np.full((1, num_par_agents), model_name)
-
+        # don't think this has the capability to actually load a model
+        # might just be overriding. Potentially why results still suck?
         dqn = DQNPlayer()
-
-        with multiprocessing.Pool(num_par_agents) as pool:
-            pool.apply_async(parallel_dqn_train(dqn, env, env_name))
+        dqn.initiate_agent(env)
+        dqn.train(env_name=model_name)
 
     def dqn_play_keras_rl(self, model_name):
         """Create 6 players, one of them a trained DQN"""
         from agents.agent_consider_equity import Player as EquityPlayer
-        from agents.agent_keras_rl_dqn import Player as DQNPlayer
+        from agents.dqn_agent import Player as DQNPlayer
         from agents.agent_random import Player as RandomPlayer
         env_name = 'neuron_poker-v0'
         self.env = gym.make(
@@ -297,6 +285,27 @@ class SelfPlay:
         print("============")
         print(league_table)
         print(f"Best Player: {best_player}")
+
+    def create_env_sac(self):
+        from agents.agent_consider_equity import Player as EquityPlayer
+        env_name = 'neuron_poker-v0'
+
+        env = gym.make(
+            env_name, initial_stacks=self.stack, render=self.render)
+
+        env.add_player(EquityPlayer(name='equity/40/50_1',
+                                    min_call_equity=.4, min_bet_equity=.5))
+        env.add_player(PlayerShell(name='sac', stack_size=self.stack))
+
+        env.reset()
+
+        return env
+
+    def sac_train(self, model_name):
+        from agents.SAC_agent import Player as SACPlayer
+
+        SAC = SACPlayer()
+        SAC.train(env_fn=self.create_env_sac())
 
 
 if __name__ == '__main__':
