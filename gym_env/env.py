@@ -58,7 +58,6 @@ class PlayerData:
         self.equity_to_river_2plr = 0
         self.equity_to_river_3plr = 0
         self.stack = None
-        self.stacl_at_hstart = None #Sta
 
 
 class Action(Enum):
@@ -200,7 +199,7 @@ class HoldemTable(Env):
         self.reward = 0
         self.acting_agent = self.player_cycle.idx
         if self._agent_is_autoplay():
-            while self._agent_is_autoplay() and not self.done: #Autoplay: no keyboard input 
+            while self._agent_is_autoplay() and not self.done:
                 log.debug("Autoplay agent. Call action method of agent.")
                 self._get_environment()
                 # call agent's action method
@@ -211,7 +210,6 @@ class HoldemTable(Env):
                 else:
                     self._execute_step(Action(action))
                     if self.first_action_for_hand[self.acting_agent] or self.done:
-                        #Only calculate reward each round at the start + at the very end , maybe modify this too? 
                         self.first_action_for_hand[self.acting_agent] = False
                         self._calculate_reward(action)
 
@@ -320,34 +318,13 @@ class HoldemTable(Env):
         #                   (1 - self.player_data.equity_to_river_alive) * self.player_pots[self.current_player.seat]
         _ = last_action
         if self.done:
-            #If game is over and agent has not folded, if they're not the winner, they get 
-            #penalized the total amount of all people
-            #otherwise, if winner, get stacks of all the people in the game 
             won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
-            #self.reward = self.initial_stacks * len(self.players) * won #Could we change this to be just the players in the game? 
-            self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
-            self.players[self.acting_agent].initial_stack 
-            #Taken from below, modified. I believe acting_agent is just the idx of the current player in players list 
-            #index of the list players[] passed into player_cycle
+            self.reward = self.initial_stacks * len(self.players) * won
+            log.debug(f"Keras-rl agent has reward {self.reward}")
 
-            #Could also add some kind of end of round reward to make this less sparse? --> need to modify when 
-            #Rewards are calculated then too 
-            
-            log.debug(f"Keras-rl agent has reward {self.reward}")#Or maybe just change this to the amount you bet total 
-            #^^ IDT this is done here, I think it's in the elif --> figure out if the elif is per hand or per round
-        #If the game is ongoing, your reward between rounds is the amt you have not betted (subtract from reward
-        #the amount you bet in the previous round)
-
-        #Modifications in run  = Final reward is the total amount you added to your stack 
-        #Intermediate rewards is the exponentiation of betting 
-
-        #Make this distinguish btwn the end of the hand ---> you win the amount in the pot as reward 
-        #Within hands, reward is (equity??)
         elif len(self.funds_history) > 1:
-            self.reward = np.exp(self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
-                -2, self.acting_agent]) #Added exponentiating this reward to always get positive reward, incentivizes
-                #Smaller bets 
-                #BETTING IS WORSE THAN ILLEGAL MOVES -- negative reward 
+            self.reward = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
+                -2, self.acting_agent]
 
         else:
             pass
@@ -964,4 +941,3 @@ class PlayerShell:
         self.temp_stack = []
         self.name = name
         self.agent_obj = None
-        self.initial_stack = stack_size #Do not change, for modified reward, constant
