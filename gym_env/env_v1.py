@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from gym import Env
-from gym.spaces import Discrete, Box
+from gym.spaces import Discrete
 
 from gym_env.rendering import PygletWindow, WHITE, RED, GREEN, BLUE
 from tools.hand_evaluator import get_winner
@@ -156,7 +156,7 @@ class HoldemTable(Env):
         self.funds_history = None
         self.array_everything = None
         self.legal_moves = None
-        self.illegal_move_reward = -10000
+        self.illegal_move_reward = -1_000_000
         self.action_space = Discrete(len(Action) - 2)
         self.first_action_for_hand = None
 
@@ -206,7 +206,6 @@ class HoldemTable(Env):
                 action = self.current_player.agent_obj.action(
                     self.legal_moves, self.observation, self.info)
                 if Action(action) not in self.legal_moves:
-                    print('Equity Illegal Move')
                     self._illegal_move(action)
                 else:
                     self._execute_step(Action(action))
@@ -218,7 +217,6 @@ class HoldemTable(Env):
         else:
             self._get_environment()  # get legal moves
             if Action(action) not in self.legal_moves:
-                print('Agent Illegal Move')
                 self._illegal_move(action)
             else:
                 self._execute_step(Action(action))
@@ -226,8 +224,8 @@ class HoldemTable(Env):
                     self.first_action_for_hand[self.acting_agent] = False
                     self._calculate_reward(action)
 
-            log.info(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
-            print(f"Previous action reward for seat {self.acting_agent}: {self.reward}")
+            log.info(
+                f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
 
     def _execute_step(self, action):
@@ -242,8 +240,8 @@ class HoldemTable(Env):
         self._get_environment()
 
     def _illegal_move(self, action):
-        log.warning(f"{action} is an Illegal move, try again. Currently allowed: {self.legal_moves}")
-        print(f"{action} is an Illegal move, try again. Currently allowed: {self.legal_moves}")
+        log.warning(
+            f"{action} is an Illegal move, try again. Currently allowed: {self.legal_moves}")
         self.reward = self.illegal_move_reward
 
     def _agent_is_autoplay(self, idx=None):
@@ -301,7 +299,7 @@ class HoldemTable(Env):
                      'stage_data': [stage.__dict__ for stage in self.stage_data],
                      'legal_moves': self.legal_moves}
 
-        self.observation_space = Box(low=0.0, high=1000.0, shape=self.array_everything.shape, dtype=np.float64)
+        self.observation_space = self.array_everything.shape
 
         if self.render_switch:
             self.render()
@@ -323,7 +321,6 @@ class HoldemTable(Env):
             won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
             self.reward = self.initial_stacks * len(self.players) * won
             log.debug(f"Keras-rl agent has reward {self.reward}")
-            print(f"Keras-rl agent has reward {self.reward}")
 
         elif len(self.funds_history) > 1:
             self.reward = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
@@ -428,10 +425,6 @@ class HoldemTable(Env):
             f"Seat {self.current_player.seat} ({self.current_player.name}): {action} - Remaining stack: {self.current_player.stack}, "
             f"Round pot: {self.current_round_pot}, Community pot: {self.community_pot}, "
             f"player pot: {self.player_pots[self.current_player.seat]}")
-        print(
-            f"Seat {self.current_player.seat} ({self.current_player.name}): {action} - Remaining stack: {self.current_player.stack}, "
-            f"Round pot: {self.current_round_pot}, Community pot: {self.community_pot}, "
-            f"player pot: {self.player_pots[self.current_player.seat]}")
 
     def _start_new_hand(self):
         """Deal new cards to players and reset table states."""
@@ -444,10 +437,6 @@ class HoldemTable(Env):
         log.info("++++++++++++++++++")
         log.info("Starting new hand.")
         log.info("++++++++++++++++++")
-        print("")
-        print("++++++++++++++++++")
-        print("Starting new hand.")
-        print("++++++++++++++++++")
         self.table_cards = []
         self._create_card_deck()
         self.stage = Stage.PREFLOP
@@ -499,7 +488,6 @@ class HoldemTable(Env):
     def _game_over(self):
         """End of an episode."""
         log.info("Game over.")
-        print("Game over.")
         self.done = True
         player_names = [f"{i} - {player.name}" for i,
                         player in enumerate(self.players)]
@@ -507,7 +495,6 @@ class HoldemTable(Env):
         if self.funds_plot:
             self.funds_history.reset_index(drop=True).plot()
         log.info(self.funds_history)
-        print(self.funds_history)
         plt.show()
 
         winner_in_episodes.append(self.winner_ix)
@@ -515,8 +502,6 @@ class HoldemTable(Env):
         best_player = league_table.index[0]
         log.info(league_table)
         log.info(f"Best Player: {best_player}")
-        print(league_table)
-        print(f"Best Player: {best_player}")
 
     def _initiate_round(self):
         """A new round (flop, turn, river) is initiated"""
@@ -532,8 +517,6 @@ class HoldemTable(Env):
         if self.stage == Stage.PREFLOP:
             log.info("")
             log.info("===Round: Stage: PREFLOP")
-            print("")
-            print("===Round: Stage: PREFLOP")
             # max steps total will be adjusted again at bb
             self.player_cycle.max_steps_total = len(
                 self.players) * self.max_round_raising + 2
@@ -552,7 +535,6 @@ class HoldemTable(Env):
 
         elif self.stage == Stage.SHOWDOWN:
             log.info("Showdown")
-            print("Showdown")
 
         else:
             raise RuntimeError()
@@ -588,8 +570,6 @@ class HoldemTable(Env):
 
         log.info("--------------------------------")
         log.info(f"===ROUND: {self.stage} ===")
-        print("--------------------------------")
-        print(f"===ROUND: {self.stage} ===")
         self._clean_up_pots()
 
     def _clean_up_pots(self):
@@ -621,7 +601,6 @@ class HoldemTable(Env):
                                                                        self.table_cards)
             winner_ix = potential_winner_idx[remaining_player_winner_ix]
         log.info(f"Player {winner_ix} won: {winning_card_type}")
-        print(f"Player {winner_ix} won: {winning_card_type}")
         return winner_ix
 
     def _award_winner(self, winner_ix):
@@ -636,7 +615,6 @@ class HoldemTable(Env):
         self.winner_ix = winner_ix
         if total_winnings < sum(self.player_max_win):
             log.info("Returning side pots")
-            print("Returning side pots")
             for i, player in enumerate(self.players):
                 player.stack += remains[i]
 
@@ -649,11 +627,9 @@ class HoldemTable(Env):
         if not self.current_player:
             if sum(self.player_cycle.alive) < 2:
                 log.info("Only one player remaining in round")
-                print("Only one player remaining in round")
                 self.stage = Stage.END_HIDDEN
             else:
                 log.info("End round - no current player returned")
-                print("End round - no current player returned")
                 self._end_round()
                 # todo: in some cases no new round should be initialized bc only one player is playing only it seems
                 self._initiate_round()
@@ -661,7 +637,6 @@ class HoldemTable(Env):
         elif self.current_player == 'max_steps_total' or self.current_player == 'max_steps_after_raiser':
             log.debug(self.current_player)
             log.info("End of round ")
-            print("End of round ")
             self._end_round()
             return
 
@@ -706,7 +681,6 @@ class HoldemTable(Env):
 
     def _distribute_cards(self):
         log.info(f"Dealer is at position {self.dealer_pos}")
-        print(f"Dealer is at position {self.dealer_pos}")
         for player in self.players:
             player.cards = []
             if player.stack <= 0:
@@ -714,15 +688,14 @@ class HoldemTable(Env):
             for _ in range(2):
                 card = np.random.randint(0, len(self.deck))
                 player.cards.append(self.deck.pop(card))
-            log.info(f"Player {player.seat} got {player.cards} and ${player.stack}")
-            print(f"Player {player.seat} got {player.cards} and ${player.stack}")
+            log.info(
+                f"Player {player.seat} got {player.cards} and ${player.stack}")
 
     def _distribute_cards_to_table(self, amount_of_cards):
         for _ in range(amount_of_cards):
             card = np.random.randint(0, len(self.deck))
             self.table_cards.append(self.deck.pop(card))
         log.info(f"Cards on table: {self.table_cards}")
-        print(f"Cards on table: {self.table_cards}")
 
     def render(self, mode='human'):
         """Render the current state"""
