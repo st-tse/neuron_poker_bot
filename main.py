@@ -8,6 +8,7 @@ Usage:
   main.py selfplay dqn_train [options]
   main.py selfplay dqn_play [options]
   main.py learn_table_scraping [options]
+
 options:
   -h --help                 Show this screen.
   -r --render               render screen

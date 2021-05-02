@@ -12,6 +12,8 @@ Graph/
 /tools/montecarlo_cpp/.rendered.Montecarlo.cpp
 /tools/montecarlo_cpp/.rendered.pymontecarlo.cpp
 /tools/montecarlo_cpp/Montecarlo.cp37-win_amd64.pyd
+/tools/montecarlo_cpp/pymontecarlo.cp37-win_amd64.pyd
+/tools/montecarlo_cpp/pymontecarlo.pyd
 /tools/montecarlo_cpp/montecarlo_cpp.sln
 /tools/montecarlo_cpp/montecarlo_cpp.vcxproj
 /tools/montecarlo_cpp/montecarlo_cpp.vcxproj.filters
