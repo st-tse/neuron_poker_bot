@@ -20,8 +20,8 @@ if __name__ == '__main__':
     env = gym.make('neuron_poker-v0', initial_stacks=args.stack,
                    render=False, funds_plot=False)
     # Add one Equity player
-    env.add_player(EquityPlayer(name='equity/20/30',
-                   min_call_equity=.2, min_bet_equity=-.3))
+    env.add_player(EquityPlayer(name='equity/60/80',
+                   min_call_equity=.6, min_bet_equity=-.8))
     # Add rl agent player we want to train on
     env.add_player(PlayerShell(name='a2c_agent', stack_size=args.stack))
     env.reset()
