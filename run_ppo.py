@@ -7,18 +7,18 @@ import argparse
 parser = argparse.ArgumentParser(description="Train a PPO agent for Poker")
 parser.add_argument('--model_name', type=str, default='test', help='file to save the model in')
 parser.add_argument('--episodes', type=int, default=500, help='# of episodes to train agent')
-parser.add_argument('--env_version', type=int, default=0, help='Specifies the version of environment to train on')
+parser.add_argument('--env_version', type=str, default='v0', help='Specifies the version of environment to train on')
 parser.add_argument('--eval', type=bool, default=False, help='Determines if we want to evaluate the agent or not')
 args = parser.parse_args()
 
 if __name__ == '__main__':
 
-    poker_env = gym.make(f'neuron_poker-v{args.env_version}', initial_stacks=500, render=False, funds_plot=False)
-    poker_env.add_player(EquityPlayer(name='equity/60/80', min_call_equity=.6, min_bet_equity=.8))
+    poker_env = gym.make(f'neuron_poker-{args.env_version}', initial_stacks=500, render=False, funds_plot=False)
+    poker_env.add_player(EquityPlayer(name='equity/60/80', env=f'env_{args.env_version}', min_call_equity=.6, min_bet_equity=.8))
     poker_env.add_player(PlayerShell(name='ppo_agent', stack_size=500))
     poker_env.reset()
 
-    ppo_agent = PPOPlayer(env=poker_env)
+    ppo_agent = PPOPlayer(env=poker_env, env_name=f'env_{args.env_version}')
     if not args.eval:
         ppo_agent.train(args.model_name, num_ep=args.episodes)
     else:

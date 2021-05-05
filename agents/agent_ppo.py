@@ -1,7 +1,6 @@
 from tensorforce.agents import Agent
 from tensorforce.environments import Environment
 from tensorforce.execution import Runner
-from gym_env.env import Action
 import tensorflow as tf
 import logging
 import time
@@ -12,8 +11,10 @@ log = logging.getLogger(__name__)
 class Player:
     """Mandatory class with the player methods"""
 
-    def __init__(self, name='ppo_agent', load_model=None, env=None):
-        """Initialization of an agent"""
+    def __init__(self, env=None, env_name='env', name='ppo_agent', load_model=None):
+        """Initialization of an agent"""   
+        my_import = __import__('gym_env.'+env_name, fromlist=['Action'])
+        self.Action = getattr(my_import, 'Action')
         self.equity_alive = 0
         self.actions = []
         self.last_action_in_stage = ''
@@ -59,8 +60,8 @@ class Player:
         _ = observation
         _ = info
 
-        this_player_action_space = {Action.FOLD, Action.CHECK, Action.CALL, Action.RAISE_POT, Action.RAISE_HALF_POT,
-                                    Action.RAISE_2POT}
+        this_player_action_space = {self.Action.FOLD, self.Action.CHECK, self.Action.CALL, self.Action.RAISE_POT, self.Action.RAISE_HALF_POT,
+                                    self.Action.RAISE_2POT}
         action = this_player_action_space.intersection(set(action_space))
 
         return action
