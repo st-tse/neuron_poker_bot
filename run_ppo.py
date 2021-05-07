@@ -13,12 +13,16 @@ args = parser.parse_args()
 
 if __name__ == '__main__':
 
+    env_path = 'env'
+    if args.env_version != 'v0':
+        env_path += f'_{args.env_version}'
+        
     poker_env = gym.make(f'neuron_poker-{args.env_version}', initial_stacks=500, render=False, funds_plot=False)
-    poker_env.add_player(EquityPlayer(name='equity/60/80', env=f'env_{args.env_version}', min_call_equity=.6, min_bet_equity=.8))
+    poker_env.add_player(EquityPlayer(name='equity/60/80', min_call_equity=.6, min_bet_equity=.8))
     poker_env.add_player(PlayerShell(name='ppo_agent', stack_size=500))
     poker_env.reset()
 
-    ppo_agent = PPOPlayer(env=poker_env, env_name=f'env_{args.env_version}')
+    ppo_agent = PPOPlayer(env=poker_env, env_name=env_path)
     if not args.eval:
         ppo_agent.train(args.model_name, num_ep=args.episodes)
     else:

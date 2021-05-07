@@ -326,7 +326,7 @@ class HoldemTable(Env):
             won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
             #self.reward = self.initial_stacks * len(self.players) * won #Could we change this to be just the players in the game? 
             self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
-            self.players[self.acting_agent].initial_stack 
+            self.players[self.acting_agent].initial_stack if len(self.funds_history) >= 1 else self.initial_stacks * len(self.players) * won
             #Taken from below, modified. I believe acting_agent is just the idx of the current player in players list 
             #index of the list players[] passed into player_cycle
 
@@ -344,8 +344,8 @@ class HoldemTable(Env):
         #Make this distinguish btwn the end of the hand ---> you win the amount in the pot as reward 
         #Within hands, reward is (equity??)
         elif len(self.funds_history) > 1:
-            self.reward = np.exp(self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
-                -2, self.acting_agent]) #Added exponentiating this reward to always get positive reward, incentivizes
+            self.reward = np.clip(np.exp(self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
+                -2, self.acting_agent]), a_min=None, a_max=10000) #Added exponentiating this reward to always get positive reward, incentivizes
                 #Smaller bets 
                 #BETTING IS WORSE THAN ILLEGAL MOVES -- negative reward 
 
