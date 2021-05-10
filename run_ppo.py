@@ -18,7 +18,7 @@ if __name__ == '__main__':
         env_path += f'_{args.env_version}'
         
     poker_env = gym.make(f'neuron_poker-{args.env_version}', initial_stacks=500, render=False, funds_plot=False)
-    poker_env.add_player(EquityPlayer(name='equity/60/80', min_call_equity=.6, min_bet_equity=.8))
+    poker_env.add_player(EquityPlayer(name='equity/60/80', env_name=env_path, min_call_equity=.6, min_bet_equity=.8))
     poker_env.add_player(PlayerShell(name='ppo_agent', stack_size=500))
     poker_env.reset()
 
