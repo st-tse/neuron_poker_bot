@@ -223,7 +223,7 @@ class HoldemTable(Env):
                     self._illegal_move(action)
                 else:
                     prev_stage = self.stage #Save the stage the agent was acting in, this is for rewards purposes
-                    self._execute_step(Action(action), self.acting_agent) #Always calculate reward each time we execute a step. 
+                    self._execute_step(Action(action)) #Always calculate reward each time we execute a step. 
                     #Know that this may change the stage of the game, so the action taken was in a previous stage maybe
                     #Ensure here that only once we're back to this player do we ever do anything 
 
@@ -237,12 +237,14 @@ class HoldemTable(Env):
                 self._illegal_move(action)
             else:
                 prev_stage = self.stage
-                self._execute_step(Action(action), self.acting_agent) #Consider cases hwere 
+                self._execute_step(Action(action)) #Consider cases hwere 
 
                 #Again, only works for 2 agents 
                 self._calculate_reward(action, prev_stage) #Always calculate reward 
 
             log.info(
+                f"Previous action reward for seat {self.acting_agent}: {self.reward}")
+            print(
                 f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
 
@@ -350,12 +352,14 @@ class HoldemTable(Env):
             self.players[self.acting_agent].initial_stack 
 
             log.debug(f"Keras-rl agent has reward {self.reward}")
+            print(f"Keras-rl agent has reward {self.reward}")
 
         elif (prev_stage == Stage.SHOWDOWN and self.Stage == Stage.PREFLOP) or (prev_stage == Stage.END_HIDDEN and self.state == Stage.PREFLOP):
             #In between hands, the reward is the money gained/lost between rounds 
             self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
             self.funds_history.iloc[-2, self.acting_agent]
             log.debug(f"Keras-rl agent has reward {self.reward}")
+            print(f"Keras-rl agent has reward {self.reward}")
 
         elif len(self.funds_history) > 1: #For every round of betting, only give small reward if the agent acts
        
@@ -367,6 +371,8 @@ class HoldemTable(Env):
             else: #If betting, get larger rewards for smaller bets.
                 self.reward = 1.01**(funds_diff) #Exponential is possibly too small!
                 #Idea for future environments: play with this exponent term to allow for larger, bounded bets
+
+            print(f"Keras-rl agent has reward {self.reward}")
 
         else:
             pass
@@ -472,6 +478,9 @@ class HoldemTable(Env):
             f"Seat {self.current_player.seat} ({self.current_player.name}): {action} - Remaining stack: {self.current_player.stack}, "
             f"Round pot: {self.current_round_pot}, Community pot: {self.community_pot}, "
             f"player pot: {self.player_pots[self.current_player.seat]}")
+        print(f"Seat {self.current_player.seat} ({self.current_player.name}): {action} - Remaining stack: {self.current_player.stack}, "
+            f"Round pot: {self.current_round_pot}, Community pot: {self.community_pot}, "
+            f"player pot: {self.player_pots[self.current_player.seat]}")
 
     def _start_new_hand(self):
         """Deal new cards to players and reset table states."""
@@ -484,6 +493,11 @@ class HoldemTable(Env):
         log.info("++++++++++++++++++")
         log.info("Starting new hand.")
         log.info("++++++++++++++++++")
+        print("")
+        print("++++++++++++++++++")
+        print("Starting new hand.")
+        print("++++++++++++++++++")
+
         self.table_cards = []
         self._create_card_deck()
         self.stage = Stage.PREFLOP
@@ -535,6 +549,7 @@ class HoldemTable(Env):
     def _game_over(self):
         """End of an episode."""
         log.info("Game over.")
+        print("Game over.")
         self.done = True
         player_names = [f"{i} - {player.name}" for i,
                         player in enumerate(self.players)]
@@ -542,6 +557,7 @@ class HoldemTable(Env):
         if self.funds_plot:
             self.funds_history.reset_index(drop=True).plot()
         log.info(self.funds_history)
+        print(self.funds_history)
         plt.show()
 
         winner_in_episodes.append(self.winner_ix)
@@ -549,6 +565,8 @@ class HoldemTable(Env):
         best_player = league_table.index[0]
         log.info(league_table)
         log.info(f"Best Player: {best_player}")
+        print(league_table)
+        print(f"Best Player: {best_player}")
 
     def _initiate_round(self):
         """A new round (flop, turn, river) is initiated"""
@@ -564,6 +582,8 @@ class HoldemTable(Env):
         if self.stage == Stage.PREFLOP:
             log.info("")
             log.info("===Round: Stage: PREFLOP")
+            print("")
+            print("===Round: Stage: PREFLOP")
             # max steps total will be adjusted again at bb
             self.player_cycle.max_steps_total = len(
                 self.players) * self.max_round_raising + 2
@@ -581,7 +601,7 @@ class HoldemTable(Env):
             self._next_player()
 
         elif self.stage == Stage.SHOWDOWN:
-            log.info("Showdown")
+            print("Showdown")
 
         else:
             raise RuntimeError()
@@ -617,6 +637,8 @@ class HoldemTable(Env):
 
         log.info("--------------------------------")
         log.info(f"===ROUND: {self.stage} ===")
+        print("--------------------------------")
+        print(f"===ROUND: {self.stage} ===")
         self._clean_up_pots()
 
     def _clean_up_pots(self):
@@ -648,6 +670,7 @@ class HoldemTable(Env):
                                                                        self.table_cards)
             winner_ix = potential_winner_idx[remaining_player_winner_ix]
         log.info(f"Player {winner_ix} won: {winning_card_type}")
+        print(f"Player {winner_ix} won: {winning_card_type}")
         return winner_ix
 
     def _award_winner(self, winner_ix):
@@ -662,6 +685,7 @@ class HoldemTable(Env):
         self.winner_ix = winner_ix
         if total_winnings < sum(self.player_max_win):
             log.info("Returning side pots")
+            print("Returning side pots")
             for i, player in enumerate(self.players):
                 player.stack += remains[i]
 
@@ -674,9 +698,11 @@ class HoldemTable(Env):
         if not self.current_player:
             if sum(self.player_cycle.alive) < 2:
                 log.info("Only one player remaining in round")
+                print("Only one player remaining in round")
                 self.stage = Stage.END_HIDDEN
             else:
                 log.info("End round - no current player returned")
+                print("Only one player remaining in round")
                 self._end_round()#move to the next round for same hand, ex. Preflop-->flop --> turn etc. 
                 # todo: in some cases no new round should be initialized bc only one player is playing only it seems
                 self._initiate_round()# Start the preflop or current round of the same hand 
@@ -684,6 +710,7 @@ class HoldemTable(Env):
         elif self.current_player == 'max_steps_total' or self.current_player == 'max_steps_after_raiser':
             log.debug(self.current_player)
             log.info("End of round ")
+            print("End of round ")
             self._end_round()
             return
 
@@ -728,6 +755,7 @@ class HoldemTable(Env):
 
     def _distribute_cards(self):
         log.info(f"Dealer is at position {self.dealer_pos}")
+        print(f"Dealer is at position {self.dealer_pos}")
         for player in self.players:
             player.cards = []
             if player.stack <= 0:
@@ -737,12 +765,15 @@ class HoldemTable(Env):
                 player.cards.append(self.deck.pop(card))
             log.info(
                 f"Player {player.seat} got {player.cards} and ${player.stack}")
+            print(
+                f"Player {player.seat} got {player.cards} and ${player.stack}")
 
     def _distribute_cards_to_table(self, amount_of_cards):
         for _ in range(amount_of_cards):
             card = np.random.randint(0, len(self.deck))
             self.table_cards.append(self.deck.pop(card))
         log.info(f"Cards on table: {self.table_cards}")
+        print(f"Cards on table: {self.table_cards}")
 
     def render(self, mode='human'):
         """Render the current state"""
