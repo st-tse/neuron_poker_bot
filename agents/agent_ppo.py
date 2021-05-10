@@ -45,6 +45,7 @@ class Player:
         self.runner = Runner(agent='ppo.json', environment=dict(type=self.poker_env), 
                 num_parallel=5, remote='multiprocessing')
         self.runner.run(num_episodes=num_ep)
+        print(f'Saving in {model_name}')
         self.runner.agent.save(directory=model_name, format='hdf5')
         self.runner.close()
 

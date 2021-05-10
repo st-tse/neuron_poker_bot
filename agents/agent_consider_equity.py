@@ -6,9 +6,9 @@ autoplay = True  # play automatically if played against keras-rl
 class Player:
     """Mandatory class with the player methods"""
 
-    def __init__(self, env='env', name='Random', min_call_equity=None, min_bet_equity=None):
+    def __init__(self, env_name='env', name='Random', min_call_equity=None, min_bet_equity=None):
         """Initiaization of an agent"""
-        my_import = __import__('gym_env.'+env, fromlist=['Action'])
+        my_import = __import__('gym_env.'+env_name, fromlist=['Action'])
         self.Action = getattr(my_import, 'Action')
         self.equity_alive = 0
         self.name = name
