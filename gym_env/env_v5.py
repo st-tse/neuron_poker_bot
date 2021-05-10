@@ -1,5 +1,12 @@
 
-#V3 = has exponentially transformed intermediate reward, intuitive final reward, and higher illegal action penalty 
+"""
+V5: Intention is to make a bluff bot because I wanna see what happens
+In poker, if one of your opponents fold your chances of winning the hand
+increase (at least from the perspective of the player).
+If all your opponents fold then you win.
+Goals is to reward the bot for opponents leaving the game.
+Maybe it'll become super toxic who knows?
+"""
 
 """Groupier functions"""
 import logging
@@ -32,7 +39,6 @@ class CommunityData:
         self.community_pot = None
         self.current_round_pot = None
         # one hot encoded, 0 = dealer
-        self.active_players = [False] * num_players
         self.big_blind = 0
         self.small_blind = 0
         self.legal_moves = [0 for action in Action]
@@ -160,9 +166,13 @@ class HoldemTable(Env):
         self.funds_history = None
         self.array_everything = None
         self.legal_moves = None
-        self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if illegal not to bet 
+        self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if it's illegal not to bet 
         self.action_space = Discrete(len(Action) - 2)
         self.first_action_for_hand = None
+
+        #added for reward calc
+        self.active_players = None
+        self.active_players_last_round = None
 
     def reset(self):
         """Reset after game over."""
@@ -212,10 +222,8 @@ class HoldemTable(Env):
                 if Action(action) not in self.legal_moves:
                     self._illegal_move(action)
                 else:
-                    self._execute_step(Action(action))
-                    if self.first_action_for_hand[self.acting_agent] or self.done:
-                        self.first_action_for_hand[self.acting_agent] = False
-                        self._calculate_reward(action)
+                    self._execute_step(Action(action)) #Always calculate reward 
+                    self._calculate_reward(action)
 
         # action received from player shell (e.g. keras rl, not autoplay)
         else:
@@ -224,9 +232,7 @@ class HoldemTable(Env):
                 self._illegal_move(action)
             else:
                 self._execute_step(Action(action))
-                if self.first_action_for_hand[self.acting_agent] or self.done:#Calculate reward at game over or hand start 
-                    self.first_action_for_hand[self.acting_agent] = False
-                    self._calculate_reward(action)
+                self._calculate_reward(action) #Always calculate reward 
 
             log.info(
                 f"Previous action reward for seat {self.acting_agent}: {self.reward}")
@@ -273,7 +279,6 @@ class HoldemTable(Env):
             self.stage.value, 3)] = 1  # pylint: disable= invalid-sequence-index
         self.community_data.legal_moves = [
             action in self.legal_moves for action in Action]
-        # self.community_data.active_players
 
         self.player_data = PlayerData()
         self.player_data.stack = [
@@ -316,22 +321,22 @@ class HoldemTable(Env):
         """
 
         _ = last_action
-        if self.done: #If game over
+        if self.done:
 
             won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
-
-            #If agent wins: receives as reward the difference in their endings stack from their initial stack 
-            #If agent loses: recieves as penalty the negative value of their initial stack 
+            
+            #If agent wins game: reward is current stack - initial stack (i.e. total $ won)
+            #If agent loses the game: Loss is -initial stack
             self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
             self.players[self.acting_agent].initial_stack 
             
             log.debug(f"Keras-rl agent has reward {self.reward}")
 
-            #Intermediate reward: Changed, now no longer penalizes all betting
-        elif len(self.funds_history) > 1:
-            self.reward = np.exp(self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
-                -2, self.acting_agent]) #Exponentiate to always get positive reward, allows small bets 
-
+        elif len(self.funds_history) > 1: #For every round of betting, only give small reward if the agent acts
+            dif = self.active_players < self.active_players_last_round
+            if dif > 0:
+                self.reward = self.community_pot * dif
+            self.active_players_last_round = self.active_players
         else:
             pass
 
@@ -343,6 +348,7 @@ class HoldemTable(Env):
         if action == Action.FOLD:
             self.player_cycle.deactivate_current()
             self.player_cycle.mark_folder()
+            self.active_players -= 1
 
         else:
 
@@ -458,6 +464,9 @@ class HoldemTable(Env):
         self.last_player_pot = 0
         self.played_in_round = 0
         self.first_action_for_hand = [True] * len(self.players)
+        #for bluff bot
+        self.active_players = len(self.players)
+        self.active_players_last_round = len(self.players)
 
         for player in self.players:
             player.cards = []
@@ -947,4 +956,4 @@ class PlayerShell:
         self.temp_stack = []
         self.name = name
         self.agent_obj = None
-        self.initial_stack = stack_size #New field to track initial stack for new rewards
+        self.initial_stack = stack_size #Stores initial player stack

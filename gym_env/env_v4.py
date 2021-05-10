@@ -1,5 +1,10 @@
 
-#V3 = has exponentially transformed intermediate reward, intuitive final reward, and higher illegal action penalty 
+#V4 = Give the agent 0 reward if they don't bet, and exponential rewards for small bets.
+#Yield this reward in every round of every hand to encourage the agent to play.
+#Final game reward is total amount won/lost. 
+#Illegal bet penalty is high to encourage correct play.
+#Intention: Force the bot to play, without incentivizing it to go all-in. 
+#Do this by giving more consistent reward throughout the game. 
 
 """Groupier functions"""
 import logging
@@ -160,7 +165,7 @@ class HoldemTable(Env):
         self.funds_history = None
         self.array_everything = None
         self.legal_moves = None
-        self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if illegal not to bet 
+        self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if it's illegal not to bet 
         self.action_space = Discrete(len(Action) - 2)
         self.first_action_for_hand = None
 
@@ -212,10 +217,8 @@ class HoldemTable(Env):
                 if Action(action) not in self.legal_moves:
                     self._illegal_move(action)
                 else:
-                    self._execute_step(Action(action))
-                    if self.first_action_for_hand[self.acting_agent] or self.done:
-                        self.first_action_for_hand[self.acting_agent] = False
-                        self._calculate_reward(action)
+                    self._execute_step(Action(action)) #Always calculate reward 
+                    self._calculate_reward(action)
 
         # action received from player shell (e.g. keras rl, not autoplay)
         else:
@@ -224,9 +227,7 @@ class HoldemTable(Env):
                 self._illegal_move(action)
             else:
                 self._execute_step(Action(action))
-                if self.first_action_for_hand[self.acting_agent] or self.done:#Calculate reward at game over or hand start 
-                    self.first_action_for_hand[self.acting_agent] = False
-                    self._calculate_reward(action)
+                self._calculate_reward(action) #Always calculate reward 
 
             log.info(
                 f"Previous action reward for seat {self.acting_agent}: {self.reward}")
@@ -273,7 +274,7 @@ class HoldemTable(Env):
             self.stage.value, 3)] = 1  # pylint: disable= invalid-sequence-index
         self.community_data.legal_moves = [
             action in self.legal_moves for action in Action]
-        # self.community_data.active_players
+        # self.cummunity_data.active_players
 
         self.player_data = PlayerData()
         self.player_data.stack = [
@@ -316,21 +317,26 @@ class HoldemTable(Env):
         """
 
         _ = last_action
-        if self.done: #If game over
+        if self.done:
 
             won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
-
-            #If agent wins: receives as reward the difference in their endings stack from their initial stack 
-            #If agent loses: recieves as penalty the negative value of their initial stack 
+            
+            #If agent wins game: reward is current stack - initial stack (i.e. total $ won)
+            #If agent loses the game: Loss is -initial stack
             self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
             self.players[self.acting_agent].initial_stack 
             
             log.debug(f"Keras-rl agent has reward {self.reward}")
 
-            #Intermediate reward: Changed, now no longer penalizes all betting
-        elif len(self.funds_history) > 1:
-            self.reward = np.exp(self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
-                -2, self.acting_agent]) #Exponentiate to always get positive reward, allows small bets 
+        elif len(self.funds_history) > 1: #For every round of betting, only give small reward if the agent acts
+            funds_diff = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[-2,\
+            self.acting_agent]
+            if funds_diff == 0: #Nothing was bet. Agent doesn't deserve reward for not playing. 
+                self.reward = 0
+            else: #If betting, get larger rewards for smaller bets.
+                self.reward = np.exp(self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[\
+                -2, self.acting_agent])
+                #Idea for future environments: play with this exponent term to allow for larger, bounded bets
 
         else:
             pass
@@ -947,4 +953,4 @@ class PlayerShell:
         self.temp_stack = []
         self.name = name
         self.agent_obj = None
-        self.initial_stack = stack_size #New field to track initial stack for new rewards
+        self.initial_stack = stack_size #Stores initial player stack

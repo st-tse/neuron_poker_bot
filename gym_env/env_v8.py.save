@@ -1,5 +1,12 @@
 
-#V3 = has exponentially transformed intermediate reward, intuitive final reward, and higher illegal action penalty 
+#Same as V7, but even more intuitive. The blinds are not choices, and the computer
+#should be penalized for allowing the blinds to occur and do nothing 
+
+#Also implements rounds! previously, only computed penalty for gameover 
+
+#GOALS: - use correct 1.01 power for rewards
+#- Compute the pot upon showdown 
+#- Give penalty for the blinds
 
 """Groupier functions"""
 import logging
@@ -160,7 +167,7 @@ class HoldemTable(Env):
         self.funds_history = None
         self.array_everything = None
         self.legal_moves = None
-        self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if illegal not to bet 
+        self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if it's illegal not to bet 
         self.action_space = Discrete(len(Action) - 2)
         self.first_action_for_hand = None
 
@@ -212,10 +219,8 @@ class HoldemTable(Env):
                 if Action(action) not in self.legal_moves:
                     self._illegal_move(action)
                 else:
-                    self._execute_step(Action(action))
-                    if self.first_action_for_hand[self.acting_agent] or self.done:
-                        self.first_action_for_hand[self.acting_agent] = False
-                        self._calculate_reward(action)
+                    self._execute_step(Action(action)) #Always calculate reward 
+                    self._calculate_reward(action)
 
         # action received from player shell (e.g. keras rl, not autoplay)
         else:
@@ -224,9 +229,7 @@ class HoldemTable(Env):
                 self._illegal_move(action)
             else:
                 self._execute_step(Action(action))
-                if self.first_action_for_hand[self.acting_agent] or self.done:#Calculate reward at game over or hand start 
-                    self.first_action_for_hand[self.acting_agent] = False
-                    self._calculate_reward(action)
+                self._calculate_reward(action) #Always calculate reward 
 
             log.info(
                 f"Previous action reward for seat {self.acting_agent}: {self.reward}")
@@ -273,7 +276,7 @@ class HoldemTable(Env):
             self.stage.value, 3)] = 1  # pylint: disable= invalid-sequence-index
         self.community_data.legal_moves = [
             action in self.legal_moves for action in Action]
-        # self.community_data.active_players
+        # self.cummunity_data.active_players
 
         self.player_data = PlayerData()
         self.player_data.stack = [
@@ -316,21 +319,35 @@ class HoldemTable(Env):
         """
 
         _ = last_action
-        if self.done: #If game over
+        if self.done:
 
             won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
-
-            #If agent wins: receives as reward the difference in their endings stack from their initial stack 
-            #If agent loses: recieves as penalty the negative value of their initial stack 
+            
+            #If agent wins game: reward is current stack - initial stack (i.e. total $ won)
+            #If agent loses the game: Loss is -initial stack
             self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
             self.players[self.acting_agent].initial_stack 
             
             log.debug(f"Keras-rl agent has reward {self.reward}")
 
-            #Intermediate reward: Changed, now no longer penalizes all betting
-        elif len(self.funds_history) > 1:
-            self.reward = np.exp(self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
-                -2, self.acting_agent]) #Exponentiate to always get positive reward, allows small bets 
+        elif self.stage == Stage.SHOWDOWN: #Penalize for losing a round. Chekc that this works
+            self.reward = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[-2,\
+            self.acting_agent]#Penalty for losing the round! Check this is right after
+            #With rounds: v7, but this ti
+
+        elif len(self.funds_history) > 1: #For every round of betting, only give small reward if the agent acts
+            funds_diff = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[-2,\
+            self.acting_agent]
+            #Stop the agent from folding
+             if last_action == 0: #Agent only gets 0 reward if it folds or plays the blinds.
+                self.reward = 0 #Might need to add reward for checks to allow it to check and not bet
+            elif last_action == 7: #humans see the blind as a penalty
+                self.reward = -1*(1.01**(-1*self.small_blind))#i.e. their blind is penalty, to the same scale 
+            elif last_action == 8:
+                self.reward = -1*(1.01**(-1*self.big_blind))
+            else: #If betting, get larger rewards for smaller bets.
+                self.reward = 1.01**(funds_diff) #Exponential is possibly too small!
+                #Idea for future environments: play with this exponent term to allow for larger, bounded bets
 
         else:
             pass
@@ -947,4 +964,4 @@ class PlayerShell:
         self.temp_stack = []
         self.name = name
         self.agent_obj = None
-        self.initial_stack = stack_size #New field to track initial stack for new rewards
+        self.initial_stack = stack_size #Stores initial player stack

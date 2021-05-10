@@ -1,5 +1,21 @@
+"""
+V9: Built off of V6
 
-#V3 = has exponentially transformed intermediate reward, intuitive final reward, and higher illegal action penalty 
+V6 rewards being in a favorable position, ie having equity greater than .5
+This should encourage the bot to only play hand where it has a decent chance of
+winning, while also not overbetting its position.
+
+What about reward for being in a better position? Instead of out outright
+dissuading playing bad hands, maybe on give negative reward if play from there
+results in worse hands.
+
+You won't get anywhere playing only postive equity hands.
+This may scale better to multiple players as your equity will rarely be live at
+the flop
+
+To increase rewards more since all consistently low, especially now because
+its a difference in equity, trying cubing
+"""
 
 """Groupier functions"""
 import logging
@@ -160,9 +176,13 @@ class HoldemTable(Env):
         self.funds_history = None
         self.array_everything = None
         self.legal_moves = None
-        self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if illegal not to bet 
+        self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if it's illegal not to bet 
         self.action_space = Discrete(len(Action) - 2)
         self.first_action_for_hand = None
+
+        #
+        self.player_equity_curr = 0
+        self.player_equity_old = 0
 
     def reset(self):
         """Reset after game over."""
@@ -172,6 +192,9 @@ class HoldemTable(Env):
         self.done = False
         self.funds_history = pd.DataFrame()
         self.first_action_for_hand = [True] * len(self.players)
+
+        self.player_equity_curr = 0
+        self.player_equity_old = 0
 
         for player in self.players:
             player.stack = self.initial_stacks
@@ -212,10 +235,8 @@ class HoldemTable(Env):
                 if Action(action) not in self.legal_moves:
                     self._illegal_move(action)
                 else:
-                    self._execute_step(Action(action))
-                    if self.first_action_for_hand[self.acting_agent] or self.done:
-                        self.first_action_for_hand[self.acting_agent] = False
-                        self._calculate_reward(action)
+                    self._execute_step(Action(action)) #Always calculate reward 
+                    self._calculate_reward(action)
 
         # action received from player shell (e.g. keras rl, not autoplay)
         else:
@@ -224,9 +245,7 @@ class HoldemTable(Env):
                 self._illegal_move(action)
             else:
                 self._execute_step(Action(action))
-                if self.first_action_for_hand[self.acting_agent] or self.done:#Calculate reward at game over or hand start 
-                    self.first_action_for_hand[self.acting_agent] = False
-                    self._calculate_reward(action)
+                self._calculate_reward(action) #Always calculate reward 
 
             log.info(
                 f"Previous action reward for seat {self.acting_agent}: {self.reward}")
@@ -273,7 +292,7 @@ class HoldemTable(Env):
             self.stage.value, 3)] = 1  # pylint: disable= invalid-sequence-index
         self.community_data.legal_moves = [
             action in self.legal_moves for action in Action]
-        # self.community_data.active_players
+        # self.cummunity_data.active_players
 
         self.player_data = PlayerData()
         self.player_data.stack = [
@@ -286,6 +305,8 @@ class HoldemTable(Env):
         self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
                                                            sum(self.player_cycle.alive), 1000)
         self.player_data.equity_to_river_alive = self.current_player.equity_alive
+
+        self.player_equity_curr = self.current_player.equity_alive
 
         arr1 = np.array(list(flatten(self.player_data.__dict__.values())))
         arr2 = np.array(list(flatten(self.community_data.__dict__.values())))
@@ -315,25 +336,16 @@ class HoldemTable(Env):
         - Currently missing potential additional winnings from future contributions
         """
 
-        _ = last_action
-        if self.done: #If game over
-
-            won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
-
-            #If agent wins: receives as reward the difference in their endings stack from their initial stack 
-            #If agent loses: recieves as penalty the negative value of their initial stack 
-            self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
-            self.players[self.acting_agent].initial_stack 
-            
-            log.debug(f"Keras-rl agent has reward {self.reward}")
-
-            #Intermediate reward: Changed, now no longer penalizes all betting
-        elif len(self.funds_history) > 1:
-            self.reward = np.exp(self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
-                -2, self.acting_agent]) #Exponentiate to always get positive reward, allows small bets 
-
+        if last_action == Action.FOLD:
+            self.reward = -(
+                    self.community_pot + self.current_round_pot)
         else:
-            pass
+            dif = self.player_equity_curr - self.player_equity_old
+
+            self.reward = (dif * (self.community_pot + self.current_round_pot)) ** 2 * np.sign(dif) * self.initial_stacks
+            self.player_equity_old = self.player_equity_curr
+
+        print(self.reward)
 
     def _process_decision(self, action):  # pylint: disable=too-many-statements
         """Process the decisions that have been made by an agent."""
@@ -458,6 +470,9 @@ class HoldemTable(Env):
         self.last_player_pot = 0
         self.played_in_round = 0
         self.first_action_for_hand = [True] * len(self.players)
+
+        self.player_equity_curr = 0
+        self.player_equity_old = 0
 
         for player in self.players:
             player.cards = []
@@ -947,4 +962,4 @@ class PlayerShell:
         self.temp_stack = []
         self.name = name
         self.agent_obj = None
-        self.initial_stack = stack_size #New field to track initial stack for new rewards
+        self.initial_stack = stack_size #Stores initial player stack

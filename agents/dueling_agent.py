@@ -24,11 +24,11 @@ window_length = 1
 nb_max_start_steps = 1  # random action
 train_interval = 100  # train every 100 steps
 nb_steps_warmup = 50  # before training starts, should be higher than start steps
-nb_steps = 1_000_000
+nb_steps = 100000
 memory_limit = int(nb_steps / 2)
 batch_size = 128  # items sampled from memory to train
 enable_double_dqn = False
-enable_dueling_dqn = False
+enable_dueling_dqn = True
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +54,6 @@ class Player:
 
     def initiate_agent(self, env):
         """initiate a deep Q agent"""
-        #Removed double/dueling DQN 
         tf.compat.v1.disable_eager_execution()
 
         self.env = env
@@ -78,6 +77,12 @@ class Player:
         policy = EpsGreedyQPolicy()
 
         nb_actions = env.action_space.n
+
+        # self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=nb_steps_warmup,
+        #                     target_model_update=1e-2, policy=policy,
+        #                     processor=CustomProcessor(),
+        #                     batch_size=batch_size, train_interval=train_interval)
+
 
         self.dqn = DQNAgent(model=self.model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=nb_steps_warmup,
                             target_model_update=1e-2, policy=policy,
@@ -155,6 +160,7 @@ class Player:
                             processor=CustomProcessor(),
                             batch_size=batch_size, train_interval=train_interval, enable_double_dqn=enable_double_dqn,
                             enable_dueling_network=enable_dueling_dqn)
+
         self.dqn.compile(
             Adam(lr=1e-3), metrics=['mae'])  # pylint: disable=no-member
 
