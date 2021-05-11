@@ -167,7 +167,7 @@ class HoldemTable(Env):
         self.funds_history = None
         self.array_everything = None
         self.legal_moves = None
-        self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if it's illegal not to bet 
+        self.illegal_move_reward = -1_000_000 #Set penalty high, forces agent to bet if it's illegal not to bet 
         self.action_space = Discrete(len(Action) - 2)
         self.first_action_for_hand = None
 
