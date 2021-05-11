@@ -1,13 +1,5 @@
 
-#V7 = Intention is to force the agent to play through scaling the exponential rewards with the 
-#discrete action space, since we can't bet continuously 
-#Used 1.01 instead of e because I noticed if any positive discrete amount is bet, reward is almost 0
-#and the agent gets reward by just playing the blinds.
-#Disallows reward on the blinds too, but no penalty 
-
-#Goals = use correct 1.01 power 
-# Use no reward on the blinds
-# Implement calculating the pot on the rounds (END_HIDDEN, SHOWDOWN)
+#V12 = V7, but with the same game over penalty/bonus as v0-v1
 
 #Current goal: compute rounds correctly 
 
@@ -358,7 +350,9 @@ class HoldemTable(Env):
            # self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
             #self.players[self.acting_agent].initial_stack 
 
-            self.reward = self.players[self.acting_agent].stack - self.players[self.acting_agent].initial_stack
+            won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
+            self.reward = self.initial_stacks * len(self.players) * won
+            log.debug(f"Keras-rl agent has reward {self.reward}")
 
             #log.info(f"Keras-rl agent has reward in done: {self.reward}")
             #log.info(f"Keras-rl agent amt in stack in rew calc: {self.players[self.acting_agent].stack}")

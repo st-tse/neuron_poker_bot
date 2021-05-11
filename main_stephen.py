@@ -226,10 +226,13 @@ class SelfPlay:
         PlayerShell_import = getattr(shell_import, 'PlayerShell')
 
         env_name = 'neuron_poker-' + self.env_name
-        self.env = gym.make(env_name, initial_stacks=self.stack, funds_plot=self.funds_plot, render=self.render,
-                            use_cpp_montecarlo=self.use_cpp_montecarlo)
-        np.random.seed(42)
-        self.env.seed(42)
+        if mode == 'train':
+            self.env = gym.make(env_name, initial_stacks=self.stack, funds_plot=self.funds_plot, render=self.render,
+                                use_cpp_montecarlo=self.use_cpp_montecarlo)
+            np.random.seed(42)
+            self.env.seed(42)
+        else:
+            self.env = gym.make(env_name, initial_stacks=self.stack, render=self.render)
 
         count = 1
 

@@ -1,12 +1,15 @@
 
-#Same as V7, but even more intuitive. The blinds are not choices, and the computer
-#should be penalized for allowing the blinds to occur and do nothing 
+#V7 = Intention is to force the agent to play through scaling the exponential rewards with the 
+#discrete action space, since we can't bet continuously 
+#Used 1.01 instead of e because I noticed if any positive discrete amount is bet, reward is almost 0
+#and the agent gets reward by just playing the blinds.
+#Disallows reward on the blinds too, but no penalty 
 
-#Also implements rounds! previously, only computed penalty for gameover 
+#Goals = use correct 1.01 power 
+# Use no reward on the blinds
+# Implement calculating the pot on the rounds (END_HIDDEN, SHOWDOWN)
 
-#GOALS: - use correct 1.01 power for rewards
-#- Compute the pot upon showdown 
-#- Give penalty for the blinds
+#Current goal: compute rounds correctly 
 
 """Groupier functions"""
 import logging
@@ -68,7 +71,7 @@ class PlayerData:
         self.equity_to_river_2plr = 0
         self.equity_to_river_3plr = 0
         self.stack = None
-        self.stacl_at_hstart = None #Sta
+        #self.stacl_at_hstart = None #Unneeded I think
 
 
 class Action(Enum):
@@ -93,8 +96,8 @@ class Stage(Enum):
     FLOP = 1
     TURN = 2
     RIVER = 3
-    END_HIDDEN = 4
-    SHOWDOWN = 5
+    END_HIDDEN = 4 #Means:
+    SHOWDOWN = 5 #Means: players showing their cards to see who has won
 
 
 class HoldemTable(Env):
@@ -107,7 +110,7 @@ class HoldemTable(Env):
 
         Args:
             num_of_players (int): number of players that need to be added
-            initial_stacks (real): initial stacks per placyer
+            initial_stacks (real): initial stacks per player
             small_blind (real)
             big_blind (real)
             render (bool): render table after each move in graphical format
@@ -158,7 +161,7 @@ class HoldemTable(Env):
         # pots
         self.community_pot = 0
         self.current_round_pot = 9
-        self.player_pots = None  # individual player pots
+        self.player_pots = None  # individual player pots, how much they've bet so far 
 
         self.observation = None
         self.reward = None
@@ -168,8 +171,9 @@ class HoldemTable(Env):
         self.array_everything = None
         self.legal_moves = None
         self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if it's illegal not to bet 
-        self.action_space = Discrete(len(Action) - 2)
-        self.first_action_for_hand = None
+        self.action_space = Discrete(len(Action) - 2) #-2 for the small blind vs big blind
+        self.first_action_for_hand = None #Is this the first thing this player is doing in this hand? Y/N
+        self.rl_agt_idx = None #Need this for rewards calculation
 
     def reset(self):
         """Reset after game over."""
@@ -186,14 +190,14 @@ class HoldemTable(Env):
         self.dealer_pos = 0
         self.player_cycle = PlayerCycle(self.players, dealer_idx=-1, max_steps_after_raiser=len(self.players) - 1,
                                         max_steps_after_big_blind=len(self.players))
-        self._start_new_hand()
-        self._get_environment()
+        self._start_new_hand() #Reset the pot to 0, save funds history, deal new cards, move to next dealer
+        self._get_environment() #Make environment obsrvatin array 
         # auto play for agents where autoplay is set
         if self._agent_is_autoplay() and not self.done:
             # kick off the first action after bb by an autoplay agent
             self.step('initial_player_autoplay')
 
-        return self.array_everything
+        return self.array_everything #Observation of initial 
 
     def step(self, action):  # pylint: disable=arguments-differ
         """
@@ -207,8 +211,9 @@ class HoldemTable(Env):
         # until either the env id sone, or an agent is just a shell and
         # and will get a call from to the step function externally (e.g. via
         # keras-rl
-        self.reward = 0
+        self.reward = 0 #Seeing the observation (array stored in class), now take a step
         self.acting_agent = self.player_cycle.idx
+        #log.info(f"Stepping in stage {self.stage}")# Debug
         if self._agent_is_autoplay():
             while self._agent_is_autoplay() and not self.done: #Autoplay: no keyboard input 
                 log.debug("Autoplay agent. Call action method of agent.")
@@ -219,8 +224,17 @@ class HoldemTable(Env):
                 if Action(action) not in self.legal_moves:
                     self._illegal_move(action)
                 else:
-                    self._execute_step(Action(action)) #Always calculate reward 
-                    self._calculate_reward(action)
+                    prev_stage = self.stage #Save the stage the agent was acting in, this is for rewards purposes
+                    self._execute_step(Action(action)) #Always calculate reward each time we execute a step. 
+                    #Know that this may change the stage of the game, so the action taken was in a previous stage maybe
+                    #Ensure here that only once we're back to this player do we ever do anything 
+                    #log.info(f"executed step before reward to {self.stage}")# Debug
+                    #log.info(f"prev stage {prev_stage}")
+
+                    #The current code works only for 2 agents I think, observe in training 
+                    if self.players[self.acting_agent].name == "keras-rl":
+                        self.rl_agt_idx = self.acting_agent
+                        self._calculate_reward(action, prev_stage) #Idea is that there's always some small reward for being curious about the game
 
         # action received from player shell (e.g. keras rl, not autoplay)
         else:
@@ -228,23 +242,38 @@ class HoldemTable(Env):
             if Action(action) not in self.legal_moves:
                 self._illegal_move(action)
             else:
-                self._execute_step(Action(action))
-                self._calculate_reward(action) #Always calculate reward 
+                prev_stage = self.stage
+                self._execute_step(Action(action)) #Consider cases hwere 
+                #log.info(f"executed step before reward to {self.stage}")# Debug
+                #log.info(f"prev stage {prev_stage}")
+                #Again, only works for 2 agents 
+                if self.players[self.acting_agent].name == 'keras-rl':
+                    self.rl_agt_idx = self.acting_agent
+                    self._calculate_reward(action, prev_stage) #Always calculate reward 
 
-            log.info(
-                f"Previous action reward for seat {self.acting_agent}: {self.reward}")
+            #log.info(
+                #f"Previous action reward for seat {self.acting_agent}: {self.reward}")
         return self.array_everything, self.reward, self.done, self.info
 
     def _execute_step(self, action):
-        self._process_decision(action)
-
-        self._next_player()
+        self._process_decision(action) #Calculates in self.contribution how much the player contributs. Subs this from stack 
+        #self.contribution from proccess_decision is what we want to compute reward value from at this point 
+        self._next_player() #Either moves us to the next player, or the next round in the same hand (ex. preflop --> flop) if no more bids 
 
         if self.stage in [Stage.END_HIDDEN, Stage.SHOWDOWN]:
-            self._end_hand()
-            self._start_new_hand()
+            self._end_hand() #Finish this hand, award a winner
+            #self.reward = #Calculate reward in _execute_step for the showdown or end_hidden
+            #log.info(f"Reward in END_HIDDEN or SHOWDOWN {self.acting_agent}: {self.reward}")
+            #In between hands, the reward is the money gained/lost between rounds #Seems to be only way to make agt understand rounds
+            if len(self.funds_history) >= 1:
+                self.reward = self.players[self.rl_agt_idx].stack -  \
+                self.funds_history.iloc[-1, self.rl_agt_idx]
+                #log.info(f"Keras-rl agent has reward in END OF ROUND: {self.reward}")
+                #log.info(f"Keras-rl agent this round stack: {self.players[self.rl_agt_idx].stack}")
+                #log.info(f"Keras-rl agent amt in prev round stack: {self.funds_history.iloc[-1, self.rl_agt_idx]}")
+            self._start_new_hand() # Deal new hand, reset stuff 
 
-        self._get_environment()
+        self._get_environment()#get array for env
 
     def _illegal_move(self, action):
         log.warning(
@@ -311,7 +340,7 @@ class HoldemTable(Env):
         if self.render_switch:
             self.render()
 
-    def _calculate_reward(self, last_action):
+    def _calculate_reward(self, last_action, prev_stage): #self.acting_agent is idx of agent 
         """
         Preliminiary implementation of reward function
 
@@ -319,38 +348,48 @@ class HoldemTable(Env):
         """
 
         _ = last_action
-        if self.done:
+        if self.done : # In game over, reward is total amt won or lost 
 
-            won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
+            #won = 1 if not self._agent_is_autoplay(idx=self.winner_ix) else -1
             
             #If agent wins game: reward is current stack - initial stack (i.e. total $ won)
             #If agent loses the game: Loss is -initial stack
-            self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
-            self.players[self.acting_agent].initial_stack 
-            
-            log.debug(f"Keras-rl agent has reward {self.reward}")
+            #Works bc this is saved in the previous execute_step into funds_history
+           # self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
+            #self.players[self.acting_agent].initial_stack 
 
-        elif self.stage == Stage.SHOWDOWN: #Penalize for losing a round. Chekc that this works
-            self.reward = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[-2,\
-            self.acting_agent]#Penalty for losing the round! Check this is right after
-            #With rounds: v7, but this ti
+            self.reward = self.players[self.acting_agent].stack - self.players[self.acting_agent].initial_stack
 
-        elif len(self.funds_history) > 1: #For every round of betting, only give small reward if the agent acts
-            funds_diff = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[-2,\
-            self.acting_agent]
+            #log.info(f"Keras-rl agent has reward in done: {self.reward}")
+            #log.info(f"Keras-rl agent amt in stack in rew calc: {self.players[self.acting_agent].stack}")
+            #log.info(f"Keras-rl agent amt in init stack: {self.players[self.acting_agent].initial_stack}")
+
+        #elif (prev_stage == Stage.SHOWDOWN and self.Stage == Stage.PREFLOP) or (prev_stage == Stage.END_HIDDEN and self.state == Stage.PREFLOP):
+        # elif (self.stage == Stage.PREFLOP and prev_stage != Stage.PREFLOP): #This works because this is during the viewing of the blind, where no reward is given anyway
+        #     #In between hands, the reward is the money gained/lost between rounds #Seems to be only way to make agt understand rounds
+        #     self.reward = self.funds_history.iloc[-1, self.acting_agent] -  \
+        #     self.funds_history.iloc[-2, self.acting_agent]
+        #     log.info(f"Keras-rl agent has reward in END OF ROUND: {self.reward}")
+        #     log.info(f"Keras-rl agent this round stack: {self.funds_history.iloc[-1, self.acting_agent]}")
+        #     log.info(f"Keras-rl agent amt in prev round stack: {self.funds_history.iloc[-2, self.acting_agent]}")
+
+        #elif len(self.funds_history) > 1: #For every round of betting, only give small reward if the agent acts
+        else:# Try this
+            funds_diff = self.players[self.acting_agent].contribution
             #Stop the agent from folding
-            if last_action == 0: #Agent only gets 0 reward if it folds or plays the blinds.
+            if Action(last_action) == Action.FOLD : #Agent only gets 0 reward if it folds or plays the blinds.
                 self.reward = 0 #Might need to add reward for checks to allow it to check and not bet
-            elif last_action == 7: #humans see the blind as a penalty
-                self.reward = -1*(1.01**(-1*self.small_blind))#i.e. their blind is penalty, to the same scale 
-            elif last_action == 8:
-                self.reward = -1*(1.01**(-1*self.big_blind))
+            elif (Action(last_action) == Action.SMALL_BLIND) or (Action(last_action) == Action.BIG_BLIND):
             else: #If betting, get larger rewards for smaller bets.
-                self.reward = 1.01**(funds_diff) #Exponential is possibly too small!
+                self.reward = 1.01**(-1*funds_diff) #Exponential is possibly too small!
                 #Idea for future environments: play with this exponent term to allow for larger, bounded bets
+            #log.info(f"Keras-rl agent has reward in intermediate: {self.reward}")
+            #log.info(f"Keras-rl agent prev state: {last_action}")
+            #log.info(f"Keras-rl agent funds diff: {funds_diff}")
 
-        else:
-            pass
+        #else:
+          #  log.info(f"Keras-rl agent does qualify: {self.reward}")
+          #  pass
 
     def _process_decision(self, action):  # pylint: disable=too-many-statements
         """Process the decisions that have been made by an agent."""
@@ -360,6 +399,7 @@ class HoldemTable(Env):
         if action == Action.FOLD:
             self.player_cycle.deactivate_current()
             self.player_cycle.mark_folder()
+            self.current_player.contribution = 0 #Add this for simpler computation of rewards. Thus, we don't need to subtract anything!
 
         else:
 
@@ -412,6 +452,10 @@ class HoldemTable(Env):
                 self.player_cycle.mark_raiser()
 
             self.current_player.stack -= contribution
+            if action != Action.SMALL_BLIND and action != Action.BIG_BLIND:
+                self.current_player.contribution = contribution
+            else:
+                self.current_player.contribution = 0 #Not counting blinds as contributions for reward 
             self.player_pots[self.current_player.seat] += contribution
             self.current_round_pot += contribution
             self.last_player_pot = self.player_pots[self.current_player.seat]
@@ -644,7 +688,7 @@ class HoldemTable(Env):
     def _next_dealer(self):
         self.dealer_pos = self.player_cycle.next_dealer().seat
 
-    def _next_player(self):
+    def _next_player(self): #Either moves us to the next player in the round, or ends the round + moves stage to next round of same hand (ex. preflop->flop)
         """Move to the next player"""
         self.current_player = self.player_cycle.next_player()
         if not self.current_player:
@@ -653,9 +697,9 @@ class HoldemTable(Env):
                 self.stage = Stage.END_HIDDEN
             else:
                 log.info("End round - no current player returned")
-                self._end_round()
+                self._end_round()#move to the next round for same hand, ex. Preflop-->flop --> turn etc. 
                 # todo: in some cases no new round should be initialized bc only one player is playing only it seems
-                self._initiate_round()
+                self._initiate_round()# Start the preflop or current round of the same hand 
 
         elif self.current_player == 'max_steps_total' or self.current_player == 'max_steps_after_raiser':
             log.debug(self.current_player)
@@ -965,3 +1009,4 @@ class PlayerShell:
         self.name = name
         self.agent_obj = None
         self.initial_stack = stack_size #Stores initial player stack
+        self.contribution = 0 #Stores the amount contributed by this player in the last bet. Used in process_decision
