@@ -342,7 +342,8 @@ class HoldemTable(Env):
             self.earnings += self.funds_history.iloc[-1, self.acting_agent] -  \
             self.funds_history.iloc[-2, self.acting_agent]
 
-        print("EARNINGS PER HAND ", self.earnings/self.hands)
+        print(f"EARNINGS PER HAND for KERAS RL in SEAT {self.acting_agent} ", \
+        self.earnings/self.hands)
 
     def _calculate_reward(self, last_action, prev_stage): #self.acting_agent is idx of agent 
         """
@@ -504,7 +505,8 @@ class HoldemTable(Env):
         """Deal new cards to players and reset table states."""
         self._save_funds_history()
 
-        self._calculate_earnings()
+        if not self._agent_is_autoplay():
+            self._calculate_earnings()
 
         if self._check_game_over():
             return
