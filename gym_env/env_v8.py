@@ -712,6 +712,7 @@ class HoldemTable(Env):
         self.legal_moves = []
         if self.player_pots[self.current_player.seat] == max(self.player_pots):
             self.legal_moves.append(Action.CHECK)
+            self.legal_moves.append(Action.FOLD)
         else:
             self.legal_moves.append(Action.CALL)
             self.legal_moves.append(Action.FOLD)

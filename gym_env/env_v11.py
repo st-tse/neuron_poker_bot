@@ -160,7 +160,7 @@ class HoldemTable(Env):
         self.funds_history = None
         self.array_everything = None
         self.legal_moves = None
-        self.illegal_move_reward = -1000 #Set penalty high, forces agent to bet if illegal not to bet 
+        self.illegal_move_reward = -1000000 #Set penalty high, forces agent to bet if illegal not to bet 
         self.action_space = Discrete(len(Action) - 2)
         self.first_action_for_hand = None
 
@@ -646,6 +646,7 @@ class HoldemTable(Env):
         self.legal_moves = []
         if self.player_pots[self.current_player.seat] == max(self.player_pots):
             self.legal_moves.append(Action.CHECK)
+            self.legal_moves.append(Action.FOLD)
         else:
             self.legal_moves.append(Action.CALL)
             self.legal_moves.append(Action.FOLD)
