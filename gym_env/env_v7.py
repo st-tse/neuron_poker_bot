@@ -332,17 +332,19 @@ class HoldemTable(Env):
         if self.render_switch:
             self.render()
 
-    def _calculate_earnings(self):
+    def _calculate_earnings(self, agent):
         """
         Only for keras agent: Adds change in round funds and 
         keeps track of how many hands the agent has played
+
+        @param agent: The seat number that the keras-rl agent is in
         """
         if len(self.funds_history) > 1:
             self.hands += 1
-            self.earnings += self.funds_history.iloc[-1, self.acting_agent] -  \
-            self.funds_history.iloc[-2, self.acting_agent]
+            self.earnings += self.funds_history.iloc[-1, agent] -  \
+            self.funds_history.iloc[-2, agent]
 
-        print(f"EARNINGS PER HAND for KERAS RL in SEAT {self.acting_agent} ", \
+        print(f"EARNINGS PER HAND for KERAS RL in SEAT {agent} ", \
         self.earnings/self.hands)
 
     def _calculate_reward(self, last_action, prev_stage): #self.acting_agent is idx of agent 
@@ -505,8 +507,7 @@ class HoldemTable(Env):
         """Deal new cards to players and reset table states."""
         self._save_funds_history()
 
-        if not self._agent_is_autoplay():
-            self._calculate_earnings()
+        self._calculate_earnings(len(self.players))
 
         if self._check_game_over():
             return
