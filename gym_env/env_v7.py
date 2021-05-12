@@ -158,7 +158,7 @@ class HoldemTable(Env):
         self.funds_plot = funds_plot
         self.max_round_raising = max_raising_rounds
 
-        self.hands = 0
+        self.hands = 1
         self.earnings = 0
 
         # pots
