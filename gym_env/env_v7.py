@@ -250,8 +250,7 @@ class HoldemTable(Env):
             log.info(
                 f"Previous action reward for seat {self.acting_agent}: {self.reward}")
             print(
-                f"Previous action reward for seat {self.acting_agent}: {self.reward}")
-            print("EARNINGS PER HAND ", self.earnings/self.hands)        
+                f"Previous action reward for seat {self.acting_agent}: {self.reward}")      
     
         return self.array_everything, self.reward, self.done, self.info
 
@@ -342,6 +341,8 @@ class HoldemTable(Env):
             self.hands += 1
             self.earnings += self.funds_history.iloc[-1, self.acting_agent] -  \
             self.funds_history.iloc[-2, self.acting_agent]
+
+        print("EARNINGS PER HAND ", self.earnings/self.hands)
 
     def _calculate_reward(self, last_action, prev_stage): #self.acting_agent is idx of agent 
         """
@@ -502,6 +503,8 @@ class HoldemTable(Env):
     def _start_new_hand(self):
         """Deal new cards to players and reset table states."""
         self._save_funds_history()
+
+        self._calculate_earnings()
 
         if self._check_game_over():
             return
