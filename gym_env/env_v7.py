@@ -245,8 +245,6 @@ class HoldemTable(Env):
                 #Again, only works for 2 agents 
                 self._calculate_reward(action, prev_stage) #Always calculate reward 
 
-                self._calculate_earnings()
-
             log.info(
                 f"Previous action reward for seat {self.acting_agent}: {self.reward}")
             print(
