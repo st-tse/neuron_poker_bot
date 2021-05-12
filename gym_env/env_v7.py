@@ -158,6 +158,9 @@ class HoldemTable(Env):
         self.funds_plot = funds_plot
         self.max_round_raising = max_raising_rounds
 
+        self.hands = 0
+        self.earnings = 0
+
         # pots
         self.community_pot = 0
         self.current_round_pot = 9
@@ -242,10 +245,14 @@ class HoldemTable(Env):
                 #Again, only works for 2 agents 
                 self._calculate_reward(action, prev_stage) #Always calculate reward 
 
+                self._calculate_earnings()
+
             log.info(
                 f"Previous action reward for seat {self.acting_agent}: {self.reward}")
             print(
                 f"Previous action reward for seat {self.acting_agent}: {self.reward}")
+            print("EARNINGS PER HAND ", self.earnings/self.hands)        
+    
         return self.array_everything, self.reward, self.done, self.info
 
     def _execute_step(self, action):
@@ -325,6 +332,16 @@ class HoldemTable(Env):
 
         if self.render_switch:
             self.render()
+
+    def _calculate_earnings(self):
+        """
+        Only for keras agent: Adds change in round funds and 
+        keeps track of how many hands the agent has played
+        """
+        if len(self.funds_history) > 1:
+            self.hands += 1
+            self.earnings += self.funds_history.iloc[-1, self.acting_agent] -  \
+            self.funds_history.iloc[-2, self.acting_agent]
 
     def _calculate_reward(self, last_action, prev_stage): #self.acting_agent is idx of agent 
         """

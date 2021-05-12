@@ -4,7 +4,7 @@ from gym_env.env import PlayerShell
 from agents.agent_ppo import Player as PPOPlayer
 import argparse
 
-parser = argparse.ArgumentParser(description="Train a PPO agent for Poker")
+parser = argparse.ArgumentParser(description="Train and Evaluation a PPO agent for Poker")
 parser.add_argument('--model_name', type=str, default='test', help='file to save the model in')
 parser.add_argument('--episodes', type=int, default=500, help='# of episodes to train agent')
 parser.add_argument('--env_version', type=str, default='v0', help='Specifies the version of environment to train on')
@@ -19,8 +19,8 @@ if __name__ == '__main__':
             
     poker_env = gym.make(f'neuron_poker-{args.env_version}', initial_stacks=500, render=False, funds_plot=False)
     poker_env.add_player(EquityPlayer(name='equity/60/80', env_name=env_path, min_call_equity=.6, min_bet_equity=.8))
-    poker_env.add_player(EquityPlayer(name='equity/40/50', env_name=env_path, min_call_equity=.4, min_bet_equity=.5))
-    poker_env.add_player(EquityPlayer(name='equity/30/40', env_name=env_path, min_call_equity=.3, min_bet_equity=.4))
+    # poker_env.add_player(EquityPlayer(name='equity/40/50', env_name=env_path, min_call_equity=.4, min_bet_equity=.5))
+    # poker_env.add_player(EquityPlayer(name='equity/30/40', env_name=env_path, min_call_equity=.3, min_bet_equity=.4))
     poker_env.add_player(PlayerShell(name='ppo_agent', stack_size=500))
     poker_env.reset()
 
