@@ -505,6 +505,7 @@ class HoldemTable(Env):
         """Deal new cards to players and reset table states."""
         self._save_funds_history()
 
+        # Parameter of this method is the seat keras-rl agent is in
         self._calculate_earnings(len(self.players)-1)
 
         if self._check_game_over():
