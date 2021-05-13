@@ -163,6 +163,9 @@ class HoldemTable(Env):
         self.funds_plot = funds_plot
         self.max_round_raising = max_raising_rounds
 
+        self.hands = 1
+        self.earnings = 0
+
         # pots
         self.community_pot = 0
         self.current_round_pot = 9
@@ -328,6 +331,20 @@ class HoldemTable(Env):
         if self.render_switch:
             self.render()
 
+    def _calculate_earnings(self, agent):
+        """
+        Only for keras agent: Adds change in round funds and 
+        keeps track of how many hands the agent has played
+        @param agent: The seat number that the keras-rl agent is in
+        """
+        if len(self.funds_history) > 1:
+            self.hands += 1
+            self.earnings += self.funds_history.iloc[-1, agent] -  \
+            self.funds_history.iloc[-2, agent]
+
+        print(f"EARNINGS PER HAND for KERAS RL in SEAT {agent} ", \
+        self.earnings/self.hands)
+
     def _calculate_reward(self, last_action):
         """
         Preliminiary implementation of reward function
@@ -446,6 +463,8 @@ class HoldemTable(Env):
     def _start_new_hand(self):
         """Deal new cards to players and reset table states."""
         self._save_funds_history()
+
+        self._calculate_earnings(len(self.players)-1)
 
         if self._check_game_over():
             return
